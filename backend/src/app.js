@@ -1,13 +1,15 @@
 /* src/app.js */
+const path = require('path');
 const express = require('express');
 require('express-async-errors');
 const cors = require('cors');
 const swagger = require('swagger-ui-express');
 
 const errorMiddleware = require('./middlewares/error.middleware');
-// const swaggerFile = require('./doc/swagger.js');
 const routes = require('./routes');
 const logger = require('./utils/customLogger');
+// const swaggerFile = require('./doc/swagger.js');
+const uploadPath = path.resolve('uploads');
 
 const app = express();
 
@@ -16,6 +18,7 @@ logger.info("App", "✅ FRONTEND_URL:", frontendURL);
 
 app.use(cors({ origin: frontendURL }));
 app.use(express.json());
+app.use('/images', express.static(uploadPath));
 
 // app.use('/docs', swagger.serve, swagger.setup(swaggerFile));
 
