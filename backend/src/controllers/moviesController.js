@@ -1,5 +1,4 @@
 /* src/controllers/moviesController.js */
-const boom = require('@hapi/boom');
 const movieService = require('../services/moviesService');
 const logger = require('../utils/customLogger');
 

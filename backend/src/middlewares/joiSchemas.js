@@ -17,6 +17,12 @@ const errorMessages = {
   genreRequired: '400|Genre deve existir',
   actorsRequired: '400|Actors deve existir e conter pelo menos um ator',
   urlImageRequired: '400|URL da imagem deve existir',
+  movieIdRequired: '400|O ID do filme é obrigatório',
+  movieIdInvalid: '400|O ID do filme deve ser um número inteiro',
+  ratingRequired: '400|A avaliação é obrigatória',
+  ratingMin: '400|A avaliação deve ser no mínimo 1',
+  ratingMax: '400|A avaliação deve ser no máximo 5',
+  commentInvalid: '400|O comentário deve ser um texto',
 };
 
 // const passwordRegex = /^(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$/; // Pelo menos 1 letra maiúscula, 1 número e 8 caracteres, sem caracteres especiais
@@ -142,17 +148,17 @@ const movieSchema = joi.object({
 
 const reviewSchema = joi.object({
   movie_id: joi.number().integer().required().messages({
-    'number.base': '400|O ID do filme deve ser um número inteiro',
-    'any.required': '400|O ID do filme é obrigatório',
+    'number.base': errorMessages.movieIdInvalid,
+    'any.required': errorMessages.movieIdRequired,
   }),
   rating: joi.number().integer().min(1).max(5).required().messages({
-    'number.base': '400|A avaliação deve ser um número',
-    'number.min': '400|A avaliação deve ser no mínimo 1',
-    'number.max': '400|A avaliação deve ser no máximo 5',
-    'any.required': '400|A avaliação é obrigatória',
+    'number.base': errorMessages.ratingRequired,
+    'number.min': errorMessages.ratingMin,
+    'number.max': errorMessages.ratingMax,
+    'any.required': errorMessages.ratingRequired,
   }),
   comment: joi.string().optional().allow('').messages({
-    'string.base': '400|O comentário deve ser um texto',
+    'string.base': errorMessages.commentInvalid,
   }),
 });
 

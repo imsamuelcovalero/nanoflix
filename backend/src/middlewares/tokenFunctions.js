@@ -23,7 +23,7 @@ const tokenFunctions = {
     );
 
     logger.info('JWT', 'Token gerado para usuário', user.email);
-    return `Bearer ${token}`; // Adiciona o prefixo 'Bearer' automaticamente
+    return token;
   },
 
   decode: (req, _res, next) => {
