@@ -11,6 +11,12 @@ const errorMessages = {
   emailRequired: '400|Email deve existir',
   emailInvalid: '400|Email deve ser válido',
   emailUsernameEqual: '400|Email e username não podem ser iguais',
+  titleRequired: '400|Title deve existir',
+  directedByRequired: '400|DirectedBy deve existir',
+  releaseYearRequired: '400|ReleaseYear deve existir e ser um ano válido',
+  genreRequired: '400|Genre deve existir',
+  actorsRequired: '400|Actors deve existir e conter pelo menos um ator',
+  urlImageRequired: '400|URL da imagem deve existir',
 };
 
 // const passwordRegex = /^(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$/; // Pelo menos 1 letra maiúscula, 1 número e 8 caracteres, sem caracteres especiais
@@ -98,9 +104,56 @@ const checkUserSchema = joi.object({
     .required()
     .messages({
       'string.empty': errorMessages.allFieldsRequired,
-      'alternatives.match': errorMessages.invalidFields,
+      'alternatives.try': errorMessages.invalidFields,
       'any.required': '400|Identifier deve existir',
     }),
 });
 
-module.exports = { loginSchema, registerSchema, checkUserSchema };
+// Esquema para inserir um novo movie
+const movieSchema = joi.object({
+  title: joi.string().required().messages({
+    'string.empty': errorMessages.allFieldsRequired,
+    'any.required': errorMessages.titleRequired,
+  }),
+  directedBy: joi.string().required().messages({
+    'string.empty': errorMessages.allFieldsRequired,
+    'any.required': errorMessages.directedByRequired,
+  }),
+  releaseYear: joi.number().integer().min(1888).required().messages({
+    'number.base': errorMessages.releaseYearRequired,
+    'number.min': '400|ReleaseYear deve ser um ano válido a partir de 1888',
+    'any.required': errorMessages.releaseYearRequired,
+  }),
+  genre: joi.string().required().messages({
+    'string.empty': errorMessages.allFieldsRequired,
+    'any.required': errorMessages.genreRequired,
+  }),
+  actors: joi.array().items(joi.string()).min(1).required().messages({
+    'array.base': '400|Actors deve ser uma lista de strings',
+    'array.min': errorMessages.actorsRequired,
+    'any.required': errorMessages.actorsRequired,
+  }),
+  urlImage: joi.string().uri().required().messages({
+    'string.empty': errorMessages.allFieldsRequired,
+    'string.uri': '400|URL da imagem deve ser válida',
+    'any.required': errorMessages.urlImageRequired,
+  }),
+});
+
+const reviewSchema = joi.object({
+  movie_id: joi.number().integer().required().messages({
+    'number.base': '400|O ID do filme deve ser um número inteiro',
+    'any.required': '400|O ID do filme é obrigatório',
+  }),
+  rating: joi.number().integer().min(1).max(5).required().messages({
+    'number.base': '400|A avaliação deve ser um número',
+    'number.min': '400|A avaliação deve ser no mínimo 1',
+    'number.max': '400|A avaliação deve ser no máximo 5',
+    'any.required': '400|A avaliação é obrigatória',
+  }),
+  comment: joi.string().optional().allow('').messages({
+    'string.base': '400|O comentário deve ser um texto',
+  }),
+});
+
+module.exports = { loginSchema, registerSchema, checkUserSchema, movieSchema, reviewSchema };

@@ -1,5 +1,5 @@
 /* src/middlewares/validators.js */
-const { loginSchema, registerSchema, checkUserSchema } = require('./joiSchemas');
+const { loginSchema, registerSchema, checkUserSchema, movieSchema } = require('./joiSchemas');
 const CustomError = require('../errors/CustomError');
 const logger = require('../utils/customLogger');
 
@@ -44,6 +44,7 @@ const validators = {
   validateLogin: validate(loginSchema, 'loginSchema'),
   validateRegister: validate(registerSchema, 'registerSchema'),
   validateCheckUserExists: validate(checkUserSchema, 'checkUserSchema'),
+  validateMovie: validate(movieSchema, 'movieSchema'),
 };
 
 module.exports = validators;
