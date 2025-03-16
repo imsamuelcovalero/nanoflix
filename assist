@@ -1,0 +1,69 @@
+Ok, quero que me ajude agora a fazer a escolha do produto base, temos que tomar cuidado pois em teoria é muito interessante se basear em um desses produtos, porém pode demandar tempo e trabalho excessivos, visto que são produtos relativamente complexos. E aí entra o prazo que eles deram para o teste, que é curto, de 5 dias, sendo que ainda tem o frontend, é um teste fullstack. 
+
+Então quero que me ajude a escolher o que podemos fazer algo apresentável e que demonstre bem o nosso conhecimento, porém com um mínimo de elementos em cada área (banco principalmente (não podemos ter muitas tabelas), rotas, etc) para construirmos logo um MVP e podermos implementar alguns dos extras. mMis alguns pontos relevantes a considerar:
+- Como trabalho com backend, terei mais dificuldades com o front, que faz um tempo que não mexo, então acho que faz sentido o backend ser mais simples, me dando mais tempo para agir no front.
+- Considero essencial uma tabela de usuários e rota de login, para possibilitar o uso de JWT. 
+
+E então, o que me diz? Vamos primeiro discutir conceitualmente, antes de iniciarmos de fato o desnevolvimento. 
+
++++
+Eu acho a opção 1 boa. Passe os passos para iniciarmos o projeto (a pasta irá se chamar backend), sendo que iremos trabalhar com:
+- MYSQL, sequelize, Node, express, express async erros, nodemon, chai/sinon/mocha, hapi/boom, cors, joi, jwt, swagger - e mais alguma biblioteca que sugerir. 
+
++++
+Parei precisando retomar os passos iniciais de configuração do projeto, retomar o início da interação/configurar o sequelize, rever com o ChatGPT os arquivos 'index.js' e 'app.js'.
+
+Estou me baseando no 'Shopper', 'Nutrition-App', 'web-scraper', 'project-our-shop-angular'.
+
+
+================================
+14/03
+================================
+Para amanhã:
+[OK] - Trazer as demais estruturas de helpers/customErros
+[OK] - Revisar .env e docker-compose.
+    => Fazer Dockerfile do backend.
+[OK] - Revisar database.js/config.js
+[OK] - Revisar index.js e app.js
+[] - Rodar os comandos do sequelize para criar a estrutura do banco.
+
+
+================================
+15/03
+================================
+"chalk": "^4.1.2",
+"winston": "^3.14.2",
+
+Parei precisando criar seeds e testar o fluxo de register/login. Caso esteja tudo funcionando, copiar a pasta e colar em templates e iniciar o git/primeiro commit.
+
+
+================================
+16/03
+================================ 
+"predev": "npm run db:reset",
+
+[OK] - criar seeds e testar o fluxo de register/login.
+[OK] - copiar a pasta e colar em templates.
+[] - iniciar o git/primeiro commit.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

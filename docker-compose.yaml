@@ -1,0 +1,47 @@
+version: '3.9'
+
+services:
+  backend:
+    container_name: nanoflix_backend
+    build: ./backend
+    ports:
+      - 3001:3001
+    working_dir: /app
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    restart: always
+    env_file:
+      - ./backend/.env
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - nanoflix_network_backend
+
+  db:
+    image: mysql:8.0
+    container_name: nanoflix_db
+    platform: linux/x86_64
+    ports:
+      - 3306:3306
+    restart: always
+    env_file:
+      - ./backend/.docker.env
+    command: --default-authentication-plugin=mysql_native_password
+    networks:
+      - nanoflix_network_backend
+    healthcheck:
+      test: [ "CMD-SHELL", "mysqladmin ping -h db -u ${MYSQL_USER} -p${MYSQL_PASSWORD}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+networks:
+  nanoflix_network_backend: {}
+  nanoflix_network_frontend: {}
+
+volumes:
+  mysql_data:

@@ -1,0 +1,2350 @@
+Ok, deu certo instalando separado. Eu devia ter te mostrado antes, aqui estão as dependências do último projeto em node.js que trabalhei, veja as que acha interessantes de usarmos aqui:
+""devDependencies": {
+    "chai": "4.3.6",
+    "chai-as-promised": "^7.1.1",
+    "chai-http": "4.3.0",
+    "eslint": "^8.41.0",
+    "eslint-config-standard": "^17.0.0",
+    "eslint-config-trybe-backend": "1.0.4",
+    "eslint-plugin-node": "^11.1.0",
+    "mocha": "9.2.2",
+    "nodemon": "^2.0.22",
+    "nyc": "^15.1.0",
+    "sinon": "13.0.1"
+  },
+  "dependencies": {
+    "@hapi/boom": "^10.0.1",
+    "bcrypt": "^5.1.0",
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "date-fns": "^2.30.0",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "express-async-errors": "^3.1.1",
+    "firebase-admin": "^11.10.1",
+    "http-status-codes": "^2.2.0",
+    "joi": "^17.9.2",
+    "jsonwebtoken": "^9.0.0",
+    "mercadopago": "^1.5.17",
+    "morgan": "^1.10.0",
+    "multer": "1.4.4",
+    "readline-sync": "^1.4.10",
+    "shelljs": "^0.8.5",
+    "socket.io": "4.4.1",
+    "swagger-ui-express": "^4.6.3"
+  }"
+
++++
+Ok, estou pensando aqui que vamos ter que acessar o MYSQL, e já pensando em ter a possibilidade futura de possibilitar o acesso ao projeto via docker, que sempre agrega valor, acho que já podemos esboçar um docker-compose, mesmo que por enquanto só usemos o serviço de 'db'. Vou te mostrar como referência o último que utilizei em um projeto de node com MYSQL, para você avaliar:
+"version: '3.9' # Versão do Docker Compose
+
+services:
+  # Define os serviços (containers) que serão iniciados
+
+  frontend:
+    # Nome do serviço de frontend
+    container_name: shopper_frontend # Nome do container Docker
+    build: ./frontend # Caminho para o Dockerfile do frontend
+    ports:
+      - 3000:3000 # Mapeia a porta 3000 do container para a porta 3000 do host
+    working_dir: /app-frontend # Define o diretório de trabalho dentro do container
+    volumes:
+      - ./frontend:/app-frontend # Mapeia o diretório ./frontend do host para o diretório /app-frontend do container
+    restart: always # Reinicia o container automaticamente se ele parar
+    networks:
+      - shopper_network-back-to-front # Adiciona este serviço à rede especificada
+    depends_on:
+      - backend # Este serviço depende do serviço backend
+
+  backend:
+    # Nome do serviço de backend
+    container_name: shopper_backend # Nome do container Docker
+    build: ./backend # Caminho para o Dockerfile do backend
+    ports:
+      - 3001:3001 # Mapeia a porta 3001 do container para a porta 3001 do host
+    working_dir: /app-backend # Define o diretório de trabalho dentro do container
+    volumes:
+      - ./check-db.sh:/app/check-db.sh # Mapeia o diretório ./backend do host para o diretório /app-backend do container
+      - ./backend/.docker.env:/app-backend/.env # Mapeia o diretório ./backend/.env do host para o diretório /app-backend/.env do container
+    tty: true # Habilita o pseudo-TTY
+    stdin_open: true # Mantém o STDIN aberto mesmo se não anexado
+    user: "1000:1000" # Define o usuário e grupo do container, foi necessário para o docker executar os scripts do package.json. O usuário e grupo 1000 são os padrões do Linux: id -u <seu_usuario> e id -g <seu_usuario> para ver os seus ids
+    command:
+      [
+        "/app/check-db.sh",
+        "db",
+        "npm",
+        "run",
+        "dev:complete"
+      ]
+    restart: always # Reinicia o container automaticamente se ele parar
+    env_file:
+      - ./backend/.docker.env # Define o arquivo de variáveis de ambiente
+    # environment:
+    #   # Variáveis de ambiente para o serviço
+    #   APP_PORT: ${APP_PORT}
+    #   JWT_SECRET: ${JWT_SECRET}
+    #   MYSQL_USER: ${MYSQL_USER}
+    #   MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    #   MYSQL_DB: ${MYSQL_DB}
+    #   MYSQL_HOST: db
+    #   MYSQL_PORT: ${MYSQL_PORT}
+    networks:
+      - shopper_network-back-to-front
+      - shopper_network-back-to-bd
+    depends_on:
+      - db
+        # Este serviço depende do serviço db
+        # condition: service_healthy # Só inicia o serviço backend quando o serviço db estiver saudável
+    # cap_add:
+    #   - SYS_NICE # Adiciona capacidades ao container
+
+  db:
+    # Nome do serviço do banco de dados
+    image: mysql:8.0 # Usa a imagem do MySQL versão 8.0 do Docker Hub
+    container_name: shopper_db # Nome do container Docker
+    platform: linux/x86_64 # Plataforma do container
+    ports:
+      - 3306:3306 # Mapeia a porta 3306 do container para a porta 3306 do host
+    restart: 'always' # Reinicia o container automaticamente se ele parar
+    environment:
+      # Variáveis de ambiente para o serviço
+      MYSQL_ROOT_PASSWORD: 123456
+    command: --default-authentication-plugin=mysql_native_password # Define o comando a ser executado ao iniciar o container
+    networks:
+      - shopper_network-back-to-bd # Adiciona este serviço à rede especificada
+    cap_add:
+      - SYS_NICE # Adiciona capacidades ao container
+    expose:
+      - '3306' # Expõe a porta 3306
+    healthcheck:
+      # Verifica se o serviço está saudável
+      test: [ "CMD", "mysqladmin", "ping", "-h", "db" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # Caso queira executar um script SQL ao iniciar o container, descomente as linhas abaixo
+    # volumes:
+    #   - ./backend/src/database/database.sql:/docker-entrypoint-initdb.d/database.sql
+
+networks:
+  shopper_network-back-to-front: {}
+  shopper_network-back-to-bd: {}"
+
+Já aproveite sugerir um nome principal para esse nosso projeto/teste, use a criatividade aqui para algo sugestivo remetendo ao nome netflix.
+
+
+================================
+15/03
+================================
+Certo, retomando a estruturação inicial do projeto, eu optei por me basear na arquitetura, organização e estrutura de outros projetos em Node.js que contruí no passado. Trouxe já bastante do conteúdo e vou revisar ele com você, aí você tem a oportunidade de corrigie caso veja algum problema ou possibilidade de melhoria tanto quanto apontar algo que possa não estar de acordo com as melhroes práticas, para que possamos discutir. 
+
+Vamos iniciar pelo .env e variáveis do docker-compose. O .env ficou assim:
+"PORT=3001 # porta da aplicação
+JWT_SECRET=secret
+#### CORS CONFIGURATION FOR PRODUCTION
+FRONTEND_URL=https:// # url do frontend
+
+# Configuração do MySQL no Local
+MYSQL_HOST=localhost
+MYSQL_USER=nanoflix_user
+MYSQL_ROOT_PASSWORD=123456
+MYSQL_DB=nanoflix-db
+MYSQL_PORT=3306"
+
+Como pode ver, eu alterei o nome das variáveis de MySQL, para condizerem com o docker-compose. E adicionei um '-db' ao final do nome do banco, para ficar mais intuitivo. 
+
+Já o docker-compose está assim:
+"version: '3.9'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: nanoflix_db
+    platform: linux/x86_64
+    ports:
+      - 3306:3306
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: nanoflix-db # alterar aqui
+      MYSQL_USER: nanoflix_user
+      MYSQL_PASSWORD: 123456
+    command: --default-authentication-plugin=mysql_native_password
+    networks:
+      - nanoflix_network
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+networks:
+  nanoflix_network:
+
+
+volumes:
+  mysql_data:"
+
+Primeiro valide essas informações e depois irei propor o próximo ponto.
+
++++
+Certo, então eu acatei as suas sugestões e o 'docker-compose' ficou assim (atualmente só temos a pasta backend, mas como o projeto será fullstack, no futuro teremos que mover ele para a pasta raiz, caso queiramos que o projeto todo funcione em docker):
+"version: '3.9'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: nanoflix_db
+    platform: linux/x86_64
+    ports:
+      - 3306:3306
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: nanoflix-db # alterar aqui
+      MYSQL_USER: nanoflix_user
+      MYSQL_PASSWORD: 123456
+    command: --default-authentication-plugin=mysql_native_password
+    networks:
+      - nanoflix_network
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "db", "-u", "nanoflix_user", "-p123456" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+networks:
+  nanoflix_network:
+
+
+volumes:
+  mysql_data:"
+
+E o nosso .env, que está dentro da pasta 'backend':
+"PORT=3001 # porta da aplicação
+JWT_SECRET=secret
+#### CORS CONFIGURATION FOR PRODUCTION
+FRONTEND_URL=https:// # url do frontend
+
+# Configuração do MySQL no Local
+MYSQL_HOST=localhost
+MYSQL_USER=nanoflix_user
+MYSQL_ROOT_PASSWORD=123456
+MYSQL_DATABASE=nanoflix-db
+MYSQL_PORT=3306"
+
+Aí eu quero trazer para estudo os últimos serviços de 'db', quero que me ajude a entender os motivos das escolhas diferentes que estamos fazendo, e ver se faz sentido considerar alguma coisa da lógica deles, especialmente a lógica de variáveis de ambiente, que ao meu ver faz sentido utilizar as do .env do projeto, ao invés de expô-las no docker-compose.
+
+Caso 1 - Projeto Shopper (fullstack, já possui as pasta geral, de backend e frontend). 
+
+docker-compose (na pasta raiz):
+"version: '3.9' # Versão do Docker Compose
+
+services:
+  # Define os serviços (containers) que serão iniciados
+
+  frontend:
+    # Nome do serviço de frontend
+    container_name: shopper_frontend # Nome do container Docker
+    build: ./frontend # Caminho para o Dockerfile do frontend
+    ports:
+      - 3000:3000 # Mapeia a porta 3000 do container para a porta 3000 do host
+    working_dir: /app-frontend # Define o diretório de trabalho dentro do container
+    volumes:
+      - ./frontend:/app-frontend # Mapeia o diretório ./frontend do host para o diretório /app-frontend do container
+    restart: always # Reinicia o container automaticamente se ele parar
+    networks:
+      - shopper_network-back-to-front # Adiciona este serviço à rede especificada
+    depends_on:
+      - backend # Este serviço depende do serviço backend
+
+  backend:
+    # Nome do serviço de backend
+    container_name: shopper_backend # Nome do container Docker
+    build: ./backend # Caminho para o Dockerfile do backend
+    ports:
+      - 3001:3001 # Mapeia a porta 3001 do container para a porta 3001 do host
+    working_dir: /app-backend # Define o diretório de trabalho dentro do container
+    volumes:
+      - ./check-db.sh:/app/check-db.sh # Mapeia o diretório ./backend do host para o diretório /app-backend do container
+      - ./backend/.docker.env:/app-backend/.env # Mapeia o diretório ./backend/.env do host para o diretório /app-backend/.env do container
+    tty: true # Habilita o pseudo-TTY
+    stdin_open: true # Mantém o STDIN aberto mesmo se não anexado
+    user: "1000:1000" # Define o usuário e grupo do container, foi necessário para o docker executar os scripts do package.json. O usuário e grupo 1000 são os padrões do Linux: id -u <seu_usuario> e id -g <seu_usuario> para ver os seus ids
+    command:
+      [
+        "/app/check-db.sh",
+        "db",
+        "npm",
+        "run",
+        "dev:complete"
+      ]
+    restart: always # Reinicia o container automaticamente se ele parar
+    env_file:
+      - ./backend/.docker.env # Define o arquivo de variáveis de ambiente
+    # environment:
+    #   # Variáveis de ambiente para o serviço
+    #   APP_PORT: ${APP_PORT}
+    #   JWT_SECRET: ${JWT_SECRET}
+    #   MYSQL_USER: ${MYSQL_USER}
+    #   MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    #   MYSQL_DB: ${MYSQL_DB}
+    #   MYSQL_HOST: db
+    #   MYSQL_PORT: ${MYSQL_PORT}
+    networks:
+      - shopper_network-back-to-front
+      - shopper_network-back-to-bd
+    depends_on:
+      - db
+        # Este serviço depende do serviço db
+        # condition: service_healthy # Só inicia o serviço backend quando o serviço db estiver saudável
+    # cap_add:
+    #   - SYS_NICE # Adiciona capacidades ao container
+
+  db:
+    # Nome do serviço do banco de dados
+    image: mysql:8.0 # Usa a imagem do MySQL versão 8.0 do Docker Hub
+    container_name: shopper_db # Nome do container Docker
+    platform: linux/x86_64 # Plataforma do container
+    ports:
+      - 3306:3306 # Mapeia a porta 3306 do container para a porta 3306 do host
+    restart: 'always' # Reinicia o container automaticamente se ele parar
+    environment:
+      # Variáveis de ambiente para o serviço
+      MYSQL_ROOT_PASSWORD: 123456
+    command: --default-authentication-plugin=mysql_native_password # Define o comando a ser executado ao iniciar o container
+    networks:
+      - shopper_network-back-to-bd # Adiciona este serviço à rede especificada
+    cap_add:
+      - SYS_NICE # Adiciona capacidades ao container
+    expose:
+      - '3306' # Expõe a porta 3306
+    healthcheck:
+      # Verifica se o serviço está saudável
+      test: [ "CMD", "mysqladmin", "ping", "-h", "db" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # Caso queira executar um script SQL ao iniciar o container, descomente as linhas abaixo
+    # volumes:
+    #   - ./backend/src/database/database.sql:/docker-entrypoint-initdb.d/database.sql
+
+networks:
+  shopper_network-back-to-front: {}
+  shopper_network-back-to-bd: {}"
+
+backend/.docker.env:
+"JWT_SECRET=jwt_secret
+APP_PORT=3001
+MYSQL_USER=root
+MYSQL_PASSWORD=123456
+MYSQL_DB=shopper_db
+MYSQL_HOST=db
+MYSQL_PORT=3306"
+
++++
+Caso 2 - Projeto web-scraper (só possui o backend em node.js, e o docker foi apenas para o MySQL mesmo):
+docker-compose (na pasta raiz, que é a única):
+"version: '3.8'
+services:
+  # app:
+  #   container_name: node # Nome do container Docker
+  #   build: .
+  #   ports:
+  #     - "3000:3000"
+  #   tty: true # Habilita o pseudo-TTY
+  #   stdin_open: true # Mantém o STDIN aberto mesmo se não anexado
+  #   command: [ "npm", "start" ] # Comando para iniciar o container
+  #   environment:
+  #     - APP_PORT=3000
+  #     - MYSQL_HOST=db
+  #     - MYSQL_USER=root
+  #     - MYSQL_PASSWORD=123456
+  #     - MYSQL_DB=web-scraper
+  #     - MYSQL_PORT=3306
+  #   depends_on:
+  #     - db
+
+  # Nome do serviço do banco de dados
+  db:
+    image: mysql:8.0
+    container_name: web-scraper-db
+    platform: linux/x86_64 # Plataforma do container
+    ports:
+      - "3306:3306"
+    restart: 'always' # Reinicia o container automaticamente se ele parar
+    env_file:
+      - ./.env # Adiciona o arquivo .env para carregar as variáveis de ambiente
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DB}
+    cap_add:
+      - SYS_NICE # Adiciona capacidades ao container
+    expose:
+      - '3306' # Expõe a porta 3306
+    healthcheck:
+      # Verifica se o serviço está saudável
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+# networks:
+#   web-scraper_network-app-to-bd: {} # Cria uma rede para comunicação entre os serviços
+"
+
+.env:
+"APP_PORT=3000
+#MYSQL_USER=root
+#MYSQL_PASSWORD=123456
+MYSQL_ROOT_PASSWORD=123456
+MYSQL_DB=web-scraper-db
+MYSQL_HOST=localhost
+MYSQL_PORT=3306"
+
+O que me diz?
+
++++
+Certo, eu acho que já podemos criar a estrutura com o serviço de backend, pois mesmo que usemos apenas o serviço de bd inicialmente (é possível inicar apenas ele) e rodemos o projeto localmente, ele já irá ficar pronto para a possibilidade de rodar todo em docker no futuro. 
+
+Eu já renomeei o .env de backend para .docker.env, e irei mover o docker-compose para a raiz, ao invés de estar dentro da pasta backend.
+
+Preciso que você agora revise o docker-compose:
+"version: '3.9'
+
+services:
+  backend:
+    container_name: nanoflix_backend
+    build: ./backend
+    ports:
+      - 3001:3001
+    working_dir: /app
+    volumes:
+      - ./backend:/app
+    restart: always
+    env_file:
+      - ./backend/.env
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - nanoflix_network_backend
+
+  db:
+    image: mysql:8.0
+    container_name: nanoflix_db
+    platform: linux/x86_64
+    ports:
+      - 3306:3306
+    restart: always
+    env_file:
+      - ./backend/.docker.env
+    command: --default-authentication-plugin=mysql_native_password
+    networks:
+      - nanoflix_network
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "db", "-u", "nanoflix_user", "-p123456" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+networks:
+  nanoflix_network_backend: {}
+  nanoflix_network_frontend: {}
+
+volumes:
+  mysql_data:
+"
+
+E eu criei um Dockerfile para o backend, que também quero que revise:
+"# File: backend/Dockerfile
+FROM node:16.14-alpine
+
+WORKDIR /app-backend
+
+COPY package* ./
+
+RUN npm install
+
+COPY . .
+
+EXPOSE 3000
+
+CMD ["npm", "start"]"
+
+++++
+Certo, eu fiz os ajustes no Dockerfile, a porta deve ser 3001 mesmo, pois a 3000 será para o frontend. E mantive 'COPY package* ./', pois até aonde eu sei ele seleciona ambos os arquivos 'package' quando está dessa forma. O conteúdo todo ficou assim para mais uma revisão:
+"# File: backend/Dockerfile
+FROM node:16.14-alpine
+
+WORKDIR /app-backend
+
+COPY package* ./
+
+RUN npm ci --only=production
+
+COPY . .
+
+EXPOSE 3001
+
+CMD ["npm", "start"]"
+
+++++
+Ok, acatei a sugestão. Agora vamos revisar o docker-compose, que está assim:
+"version: '3.9'
+
+services:
+  backend:
+    container_name: nanoflix_backend
+    build: ./backend
+    ports:
+      - 3001:3001
+    working_dir: /app
+    volumes:
+      - ./backend:/app
+    restart: always
+    env_file:
+      - ./backend/.env
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - nanoflix_network_backend
+
+  db:
+    image: mysql:8.0
+    container_name: nanoflix_db
+    platform: linux/x86_64
+    ports:
+      - 3306:3306
+    restart: always
+    env_file:
+      - ./backend/.docker.env
+    command: --default-authentication-plugin=mysql_native_password
+    networks:
+      - nanoflix_network_backend
+    healthcheck:
+      test: [ "CMD-SHELL", "mysqladmin ping -h db -u ${MYSQL_USER} -p${MYSQL_PASSWORD}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+networks:
+  nanoflix_network_backend: {}
+  nanoflix_network_frontend: {}
+
+volumes:
+  mysql_data:
+"
+
+Eu não entendi muito bem a sugestão que deu no tiem 2 anteriormente:
+"2️⃣ Melhorar a configuração do volumes no backend
+
+    Atualmente, o volume substitui todo o container pelo código local (./backend:/app), o que pode causar problemas se houver arquivos importantes no container.
+    Melhor abordagem:
+
+volumes:
+  - ./backend:/app
+  - /app/node_modules
+
+Isso evita sobrescrever a pasta node_modules do container, garantindo que as dependências sejam corretamente instaladas dentro do Docker."
+
+E na verdade queria mostrar também o docker-compose de outro projeto:
+"backend:
+    # Nome do serviço de backend
+    container_name: our_shop_app_backend # Nome do container Docker backend
+    build: ./backend # Caminho para o Dockerfile do backend
+    ports:
+      - 3000:3000 # Mapeia a porta 3000 do container para a porta 3000 do host
+    working_dir: /app-backend # Define o diretório de trabalho dentro do container
+    volumes:
+      - ./backend/.docker.env:/app-backend/.env # Mapeia o diretório ./backend/.env do host para o diretório /app-backend/.env do container
+      - ./backend:/app-backend # Mapeia o diretório ./backend do host para o diretório /app-backend do container
+    tty: true # Habilita o pseudo-TTY
+    stdin_open: true # Mantém o STDIN aberto mesmo se não anexado
+    user: "1000:1000" # Define o usuário e grupo do container, foi necessário para o docker executar os scripts do package.json. O usuário e grupo 1000 são os padrões do Linux: id -u <seu_usuario> e id -g <seu_usuario> para ver os seus ids
+    command: [ "npm", "run", "dev" ]
+    restart: always # Reinicia o container automaticamente se ele parar
+    env_file:
+      - ./backend/.docker.env # Define o arquivo de variáveis de ambiente
+    networks:
+      - our_shop_app_network-back-to-front
+      - our_shop_app_network-back-to-bd
+    depends_on:
+      - mongodb
+        # Este serviço depende do serviço db
+        # condition: service_healthy # Só inicia o serviço backend quando o serviço db estiver saudável
+    # cap_add:
+    #   - SYS_NICE # Adiciona capacidades ao container
+
+  mongodb:
+    # Nome do serviço do banco de dados
+    image: mongo:6.0.6 # Imagem do banco de dados
+    container_name: our_shop_app_db # Nome do container Docker db
+    platform: linux/x86_64 # Plataforma do container
+    ports:
+      - 27017:27017 # Mapeia a porta 27017 do container para a porta 27017 do host
+    restart: 'always' # Reinicia o container automaticamente se ele parar
+    volumes:
+      - ./backend/.docker.env:/app-backend/.env # Mapeia o diretório ./backend/.env do host para o diretório /app-backend/.env do container
+    # env_file:
+    #   - ./backend/.docker.env # Define o arquivo de variáveis de ambiente
+    # environment:
+    #   # Variáveis de ambiente para o serviço
+    #   MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+    networks:
+      - our_shop_app_network-back-to-bd # Adiciona este serviço à rede especificada
+    cap_add:
+      - SYS_NICE # Adiciona capacidades ao container
+    expose:
+      - '27017' # Expõe a porta 27017 do container
+    healthcheck:
+      # Verifica se o serviço está saudável
+      test: [ "CMD", "mongo", "--eval", "db.adminCommand('ping')" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # Caso queira executar um script SQL ao iniciar o container, descomente as linhas abaixo
+    # volumes:
+    #   - ./backend/src/database/database.sql:/docker-entrypoint-initdb.d/database.sql
+
+networks:
+  our_shop_app_network-back-to-front: {}
+  our_shop_app_network-back-to-bd: {}"
+
+Ele cria 2 volumes, certo?
+"volumes:
+      - ./backend/.docker.env:/app-backend/.env # Mapeia o diretório ./backend/.env do host para o diretório /app-backend/.env do container
+      - ./backend:/app-backend # Mapeia o diretório ./backend do host para o diretório /app-backend do container"
+
+Não precisamos do volume do 'docker.env'?
+
+E veja os demais itens diferentes se estamos com melhores prática de fato.
+
+++++
+Ok, agora deu certo, vamos prosseguir? Na imagem anexa 1, eu já estou te mostrando um pouco da arquitetura atual do projeto, e antes de revisarmos app.js e index.js (aqui eu preciso saber se o nome mais correto seria server.js, em termos de boas práticas), vamos revisar o 'src/database/config.js', que peguei a base de outro projeto. Atualmente ele está assim:
+"/* src/database/config/config.js */
+require('dotenv').config();
+
+// Importa o Sequelize, um ORM (Object-Relational Mapping) para Node.js.
+// O Sequelize facilita a interação com o banco de dados MySQL.
+const Sequelize = require('sequelize');
+
+const sequelize = new Sequelize(
+  process.env.MYSQL_DB || 'nanoflix-db', // Nome do banco de dados.
+  process.env.MYSQL_USER || 'root', // Usuário do banco de dados.
+  process.env.MYSQL_PASSWORD, // Senha do banco de dados.
+  {
+    host: process.env.MYSQL_HOST || 'localhost', // Host do banco de dados.
+    dialect: 'mysql', // Define o tipo de banco de dados.
+    operatorsAliases: 0, // Desativa aliases de operadores para evitar advertências de segurança.
+
+    // Configuração do pool de conexões para gerenciar um conjunto de conexões ao banco de dados.
+    pool: {
+      max: 5, // Número máximo de conexões no pool.
+      min: 0, // Número mínimo de conexões no pool.
+      acquire: 30000, // Tempo máximo, em milissegundos, que o pool tentará obter uma conexão
+      // antes de lançar erro.
+      idle: 10000, // Tempo máximo, em milissegundos, que uma conexão pode ficar inativa
+      // antes de ser liberada.
+    },
+  },
+);
+
+// Exporta a instância do Sequelize para ser utilizada em outras partes do aplicativo.
+module.exports = sequelize;"
+
+Lembrando do nosso .env:
+"# Configuração do MySQL no Local
+MYSQL_HOST=localhost
+MYSQL_USER=nanoflix_user
+MYSQL_ROOT_PASSWORD=123456
+MYSQL_DATABASE=nanoflix-db
+MYSQL_PORT=3306"
+
+++++
+Certo, agora vamos revisar então o 'server.js', que já renomeei conforme o sugerido:
+"/* src/server.js */
+require('dotenv').config();
+
+const app = require('./app');
+
+const PORT = process.env.PORT || 3001;
+
+app.listen(PORT, "0.0.0.0", () => console.log(`Running server on port: ${PORT}`));"
+
++++
+E agora o 'app.js':
+"/* src/app.js */
+const express = require('express');
+require('express-async-errors');
+const cors = require('cors');
+const errorMiddleware = require('./middlewares/error.middleware');
+
+const swagger = require('swagger-ui-express');
+const swaggerFile = require('./doc/swagger.js');
+
+const routes = require('./routes');
+
+const app = express();
+
+const frontendURL = process.env.FRONTEND_URL || 'http://localhost:3000';
+console.log(`FRONTEND_URL: ${frontendURL}`);
+
+/* envia credenciais para o frontend */
+app.use(cors({
+  origin: frontendURL,
+  credentials: true,
+}));
+app.use(express.json());
+app.use('/docs', swagger.serve, swagger.setup(swaggerFile));
+
+app.use(routes);
+
+app.get('/', (req, res) => {
+  res.send('Servidor funcionando!');
+});
+
+app.get('/coffee', (_req, res) => res.status(418).end());
+
+app.use(errorMiddleware);
+
+module.exports = app;"
+
+Eu deixei o cors assim, pois no projeto que em baseei utilizei cookies para transmitir dos tokens, mas nesse projeto vamos fazer da forma pmais simples mesmo, então não sei se é melhor alterar algo:
+"app.use(cors({
+  origin: frontendURL,
+  credentials: true,
+}));"
+
++++
+Ok, estava pensando em avançar, mas acho que é um bom momento para introduzir um utilitário que critie e utilizo no projeto da empresa, enquanto ainda temos poucos logs, veja ele, que já trouxe para a pasta 'src/utils':
+"/* src/utils/customLogger.js */
+require('dotenv').config(); // você disse que não precisa mais importar
+const { createLogger, format, transports } = require('winston');
+const chalk = require('chalk');
+
+const ENV = process.env.NODE_ENV || 'development';
+
+const envs = {
+    PROD: 'production',
+    DEV: 'development',
+    LOCAL: 'local',
+};
+
+const isDevEnv = ENV === envs.DEV || ENV === envs.LOCAL;
+
+const customFormat = format.printf(({ level, message, context }) => {
+    let logMessage = '';
+    const [mainMessage, highlightedMessage] = message.split('|||');
+    
+    switch (level) {
+        case 'debug':
+            logMessage = `${chalk.blue(`[*${context}*]`)}: ${mainMessage} ${chalk.blue(highlightedMessage)}`;
+            break;
+        case 'info':
+            logMessage = `${chalk.green(`[*${context}*]`)}: ${mainMessage} ${chalk.green(highlightedMessage)}`;
+            break;
+        case 'warn':
+            logMessage = `${chalk.yellow(`[*${context}*]`)}: ${mainMessage} ${chalk.yellow(highlightedMessage)}`;
+            break;
+        case 'error':
+            logMessage = `${chalk.red(`[*${context}*]`)}: ${mainMessage} ${chalk.red(highlightedMessage)}`;
+            break;
+        default:
+            logMessage = `[*${context}*]: ${mainMessage} ${highlightedMessage}`;
+    }
+    return logMessage;
+});
+
+const prodFormat = format.combine(
+    format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+    format.printf(({ timestamp, level, message, context }) => {
+        const [mainMessage, highlightedMessage] = message.split('|||');
+        return `[*${context}* at ${timestamp}]: ${level.toUpperCase()} - ${mainMessage} ${highlightedMessage}`;
+    })
+);
+
+const customLogger = createLogger({
+    level: isDevEnv ? 'debug' : 'warn',
+    format: isDevEnv ? customFormat : prodFormat,
+    transports: [
+        new transports.Console()
+    ]
+});
+
+const buildMessage = (context, mainMessage, highlightedMessage = '') => ({
+    context,
+    message: `${mainMessage}|||${highlightedMessage}`
+});
+
+customLogger.debug = (context, mainMessage, highlightedMessage = '') => {
+    if (isDevEnv) customLogger.log('debug', buildMessage(context, mainMessage, highlightedMessage));
+};
+
+customLogger.info = (context, mainMessage, highlightedMessage = '') => {
+    if (isDevEnv) customLogger.log('info', buildMessage(context, mainMessage, highlightedMessage));
+};
+
+customLogger.warn = (context, mainMessage, highlightedMessage = '') => {
+    customLogger.log('warn', buildMessage(context, mainMessage, highlightedMessage));
+};
+
+customLogger.error = (context, mainMessage, highlightedMessage = '') => {
+    customLogger.log('error', buildMessage(context, mainMessage, highlightedMessage));
+};
+
+module.exports = customLogger;"
+
+Eu peguei no package.json as versões que estão instaladas do chalk e winston:
+""chalk": "^4.1.2",
+"winston": "^3.14.2","
+
+Eu não em recordo se precisam estar exatamente nessa verão, então fui instalar o chalk normalmente e apareceu isso:
+"samuel@holydesk-linux:/media/samuel/dados-linux13/testes-tecnicos/nanoflix/backend$ npm i chalk
+npm error code ERESOLVE
+npm error ERESOLVE could not resolve
+npm error
+npm error While resolving: eslint-config-standard@17.1.0
+npm error Found: eslint@9.22.0
+npm error node_modules/eslint
+npm error   peer eslint@"^6.0.0 || ^7.0.0 || >=8.0.0" from @eslint-community/eslint-utils@4.5.0
+npm error   node_modules/@eslint-community/eslint-utils
+npm error     @eslint-community/eslint-utils@"^4.2.0" from eslint@9.22.0
+npm error     @eslint-community/eslint-utils@"^4.2.0" from eslint@8.57.1
+npm error     node_modules/eslint-plugin-editorconfig/node_modules/eslint
+npm error       eslint@"^8.0.1" from eslint-plugin-editorconfig@4.0.2
+npm error       node_modules/eslint-plugin-editorconfig
+npm error         eslint-plugin-editorconfig@"4.0.2" from eslint-config-trybe-backend@2.1.0
+npm error         node_modules/eslint-config-trybe-backend
+npm error     2 more (eslint-plugin-es-x, eslint-plugin-n)
+npm error   peer eslint@">=6.0.0" from eslint-compat-utils@0.5.1
+npm error   node_modules/eslint-compat-utils
+npm error     eslint-compat-utils@"^0.5.1" from eslint-plugin-es-x@7.8.0
+npm error     node_modules/eslint-plugin-es-x
+npm error       eslint-plugin-es-x@"^7.5.0" from eslint-plugin-n@16.6.2
+npm error       node_modules/eslint-plugin-n
+npm error         peer eslint-plugin-n@"^15.0.0 || ^16.0.0 " from eslint-config-standard@17.1.0
+npm error         node_modules/eslint-config-standard
+npm error   11 more (eslint-plugin-es, eslint-plugin-es-x, ...)
+npm error
+npm error Could not resolve dependency:
+npm error peer eslint@"^8.0.1" from eslint-config-standard@17.1.0
+npm error node_modules/eslint-config-standard
+npm error   dev eslint-config-standard@"^17.1.0" from the root project
+npm error
+npm error Conflicting peer dependency: eslint@8.57.1
+npm error node_modules/eslint
+npm error   peer eslint@"^8.0.1" from eslint-config-standard@17.1.0
+npm error   node_modules/eslint-config-standard
+npm error     dev eslint-config-standard@"^17.1.0" from the root project
+npm error
+npm error Fix the upstream dependency conflict, or retry
+npm error this command with --force or --legacy-peer-deps
+npm error to accept an incorrect (and potentially broken) dependency resolution.
+npm error
+npm error
+npm error For a full report see:
+npm error /home/samuel/.npm/_logs/2025-03-15T18_41_04_536Z-eresolve-report.txt
+npm error A complete log of this run can be found in: /home/samuel/.npm/_logs/2025-03-15T18_41_04_536Z-debug-0.log"
+
+O que sugere?
+
++++
+Certo, vamos manter a '3.17.0' por enquanto então. Quer implementar o uso server.js primeiro?
+"/* src/server.js */
+require('dotenv').config();
+
+const app = require('./app');
+
+const PORT = process.env.PORT || 3001;
+
+app.listen(PORT, "0.0.0.0", () => {
+  console.info(`[✅] Server is running on http://localhost:${PORT}`);
+}).on("error", (err) => {
+  console.error("[❌] Failed to start server:", err);
+  process.exit(1);
+});"
+
++++
+Ok, agora nos preparando para testarmos o funciomanento do projeto, vamos adicionar os nossos scripts? Vou mostrar os do projeto Shopper, que está bem completo, apesar de ser em TS, então precisaremos adaptar a nossa realidade. E também não sei se precisamos do '"import:sql"' e "dev:complete". Veja:
+""scripts": {
+    "build": "npx -y tsc",
+    "predev": "npm run build && npm run db:reset",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "db:reset": "npx sequelize-cli db:drop && npx sequelize-cli db:create && npx sequelize-cli db:migrate",
+    "import:sql": "ts-node ./src/scripts/database_install.ts",
+    "start": "ts-node src/index.ts",
+    "dev": "nodemon --watch \"./src/**\" --exec ts-node ./src/index.ts",
+    "dev:complete": "concurrently \"npm:dev\" \"npm run import:sql 2 && npx sequelize-cli db:seed:all\""
+  },
+  "keywords": [
+    "backend",
+    "typescript",
+    "nodejs",
+    "express",
+    "sequelize",
+    "mysql"
+  ],"
+
+Eu ja'deixei as keywords aí para que você tmabém crie as nossas. Estamos assim atualmente:
+"scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],"
+
++++
+Ok, agora acho que você vai querer dar uma olhada no 'model/index.js', que esá assim:
+"'use strict';
+
+const fs = require('fs');
+const path = require('path');
+const Sequelize = require('sequelize');
+const process = require('process');
+const basename = path.basename(__filename);
+const env = process.env.NODE_ENV || 'development';
+const config = require(__dirname + '/../config/config.json')[env];
+const db = {};
+
+let sequelize;
+if (config.use_env_variable) {
+  sequelize = new Sequelize(process.env[config.use_env_variable], config);
+} else {
+  sequelize = new Sequelize(config.database, config.username, config.password, config);
+}
+
+fs
+  .readdirSync(__dirname)
+  .filter(file => {
+    return (
+      file.indexOf('.') !== 0 &&
+      file !== basename &&
+      file.slice(-3) === '.js' &&
+      file.indexOf('.test.js') === -1
+    );
+  })
+  .forEach(file => {
+    const model = require(path.join(__dirname, file))(sequelize, Sequelize.DataTypes);
+    db[model.name] = model;
+  });
+
+Object.keys(db).forEach(modelName => {
+  if (db[modelName].associate) {
+    db[modelName].associate(db);
+  }
+});
+
+db.sequelize = sequelize;
+db.Sequelize = Sequelize;
+
+module.exports = db;
+"
+
+Eu tive erro quando fui iniciar o projeto:
+"samuel@holydesk-linux:/media/samuel/dados-linux13/testes-tecnicos/nanoflix/backend$ npm run dev
+
+> backend@1.0.0 predev
+> npm run db:reset
+
+
+> backend@1.0.0 db:reset
+> npx sequelize-cli db:drop && npx sequelize-cli db:create && npx sequelize-cli db:migrate
+
+
+Sequelize CLI [Node: 20.17.0, CLI: 6.6.2, ORM: 6.37.6]
+
+
+ERROR: Error reading "config/config.json". Error: Error: Cannot find module '/media/samuel/dados-linux13/testes-tecnicos/nanoflix/backend/config/config.json'
+Require stack:
+- /media/samuel/dados-linux13/testes-tecnicos/nanoflix/backend/node_modules/sequelize-cli/lib/helpers/import-helper.js
+- /media/samuel/dados-linux13/testes-tecnicos/nanoflix/backend/node_modules/sequelize-cli/lib/helpers/config-helper.js
+- /media/samuel/dados-linux13/testes-tecnicos/nanoflix/backend/node_modules/sequelize-cli/lib/helpers/index.js
+- /media/samuel/dados-linux13/testes-tecnicos/nanoflix/backend/node_modules/sequelize-cli/lib/commands/init.js
+- /media/samuel/dados-linux13/testes-tecnicos/nanoflix/backend/node_modules/sequelize-cli/lib/sequelize"
+
+Não sei se é apenas alterar a linha: "const config = require(__dirname + '/../config/config.json')[env];", 
+
+O mode/index.ts do Shopper está assim, apesar de ser TS:
+"import { Sequelize } from 'sequelize';
+import * as config from '../config/database';
+
+export default new Sequelize(config);"
+
+E o web-scrapper não tem index.js, só tem os models mesmo, como pode ver na imagem anexa.
+
+++++
+Certo, pelo npm run start eu consegui iniciar a aplicação, mas pra isso eu precisei comentar a parte de rotas e de swagger que não existe ainda (vamos deixar o swagger para depois). Acho que agora o próximo passo é criar a model de User apenas, pois quero guardar esse projeto na pasta templates e para isso só podemos ter o básico, depois trabalhamos em uma rota para finalizar essa parte inicial. 
+
++++
+Ok, agora criamos a model com sucesso, e o arquivo está assim:
+"'use strict';
+const {
+  Model
+} = require('sequelize');
+module.exports = (sequelize, DataTypes) => {
+  class User extends Model {
+    /**
+     * Helper method for defining associations.
+     * This method is not a part of Sequelize lifecycle.
+     * The `models/index` file will call this method automatically.
+     */
+    static associate(models) {
+      // define association here
+    }
+  }
+  User.init({
+    name: DataTypes.STRING,
+    email: DataTypes.STRING,
+    password: DataTypes.STRING
+  }, {
+    sequelize,
+    modelName: 'User',
+  });
+  return User;
+};"
+
+Eu acho que para os detalhes dela, podemos nos basear em algo que usei em outro projeto, o que me diz?
+"class UserModel extends Model {
+  id!: number;
+  email!: string;
+  password!: string;
+  username!: string;
+  role!: string;
+}
+
+UserModel.init(
+  {
+    id: {
+      type: INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    username: {
+      type: STRING,
+      allowNull: false,
+    },
+    role: {
+      type: STRING,
+      allowNull: false,
+    },
+    email: {
+      type: STRING,
+      allowNull: false,
+    },
+    password: {
+      type: STRING,
+      allowNull: false,
+    },
+  },
+  {
+    sequelize: db,
+    modelName: 'users',
+    underscored: true,
+    timestamps: false,
+  },
+);
+
+export default UserModel;"
+
+Acho 'username' melhor do que nome e 'role' é interessante pois abre espaço pra níveis de acesso futuramente.
+
++++
+Ok, então o arquivo database.js ficou assim:
+"/* src/database/config/database.js */
+require('dotenv').config();
+
+const options = {
+  username: process.env.MYSQL_USER || 'root',
+  password: process.env.MYSQL_ROOT_PASSWORD || '',
+  database: process.env.MYSQL_DATABASE || 'nanoflix-db',
+  host: process.env.MYSQL_HOST || 'localhost',
+  port: process.env.MYSQL_PORT || 3306,
+  dialect: 'mysql',
+};
+
+module.exports = {
+  development: {
+    logging: process.env.NODE_ENV !== 'production',
+    ...options,
+  },
+  test: {
+    logging: false,
+    ...options,
+  },
+  production: {
+    logging: false,
+    ...options,
+  },
+};"
+
+O init.js assim:
+"/* src/database/config/init.js */
+const sequelize = require('./config/config');
+const User = require('./models/User')(sequelize);
+
+// Executa todas as associações entre os modelos
+Object.values(sequelize.models).forEach((model) => {
+  if (model.associate) {
+    model.associate(sequelize.models);
+  }
+});
+
+module.exports = { sequelize, User };"
+
+E criei um index.js em database/models, pois eu vi esse padrão em outros projetos, ele está assim:
+"/* src/database/models/index.js */
+const { Sequelize } = require('sequelize');
+const config = require('../config/database')[process.env.NODE_ENV || 'development'];
+
+const sequelize = new Sequelize(config.database, config.username, config.password, config);
+
+module.exports = sequelize;"
+
+O arquivo .sequelizerc está assim:
+"const path = require('path');
+
+module.exports = {
+  'config': path.resolve(__dirname, 'src', 'database', 'config', 'database.js'),
+  'models-path': path.resolve(__dirname, 'src', 'database', 'models'),
+  'seeders-path': path.resolve(__dirname, 'src', 'database', 'seeders'),
+  'migrations-path': path.resolve(__dirname, 'src', 'database', 'migrations'),
+};"
+
+O que me diz, podemos prosseguir?
+
+++++
+Mas e 'MYSQL_ROOT_PASSWORD', é realmente necessário? Deu certo de adicionar o usuário por centro do container, veja:
+"samuel@holydesk-linux:/media/samuel/dados-linux13/testes-tecnicos/nanoflix/backend$ docker exec -it nanoflix_db mysql -u root -p123456 
+mysql: [Warning] Using a password on the command line interface can be insecure.
+Welcome to the MySQL monitor.  Commands end with ; or \g.
+Your MySQL connection id is 618
+Server version: 8.0.38 MySQL Community Server - GPL
+
+Copyright (c) 2000, 2024, Oracle and/or its affiliates.
+
+Oracle is a registered trademark of Oracle Corporation and/or its
+affiliates. Other names may be trademarks of their respective
+owners.
+
+Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+
+mysql> CREATE USER 'nanoflix_user'@'%' IDENTIFIED BY '123456';
+Query OK, 0 rows affected (0.01 sec)
+
+mysql> GRANT ALL PRIVILEGES ON `nanoflix-db`.* TO 'nanoflix_user'@'%';
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> FLUSH PRIVILEGES;
+Query OK, 0 rows affected (0.01 sec)
+
+mysql> EXIT;
+Bye
+samuel@holydesk-linux:/media/samuel/dados-linux13/testes-tecnicos/nanoflix/backend$ docker exec -it nanoflix_db mysql -u nanoflix_user -p123456
+mysql: [Warning] Using a password on the command line interface can be insecure.
+Welcome to the MySQL monitor.  Commands end with ; or \g.
+Your MySQL connection id is 625
+Server version: 8.0.38 MySQL Community Server - GPL
+
+Copyright (c) 2000, 2024, Oracle and/or its affiliates.
+
+Oracle is a registered trademark of Oracle Corporation and/or its
+affiliates. Other names may be trademarks of their respective
+owners.
+
+Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+
+mysql> quit
+Bye
+samuel@holydesk-linux:/media/samuel/dados-linux13/testes-tecnicos/nanoflix/backend$ "
+
+Mas eu quero deixar tudo certo nesse projeto para utilizar de referência nos projetos futuros. 
+
+Então estamos assim:
+,env:
+"# Configuração do MySQL no Local
+MYSQL_HOST=localhost
+MYSQL_USER=nanoflix_user
+MYSQL_ROOT_PASSWORD=123456
+MYSQL_DATABASE=nanoflix-db
+MYSQL_PORT=3306"
+
+.docker.env:
+"# Configuração do MySQL para o Docker
+MYSQL_HOST=db
+MYSQL_USER=nanoflix_user
+MYSQL_ROOT_PASSWORD=123456
+MYSQL_DATABASE=nanoflix-db
+MYSQL_PORT=3306"
+
+docker-compose:
+"version: '3.9'
+
+services:
+  backend:
+    container_name: nanoflix_backend
+    build: ./backend
+    ports:
+      - 3001:3001
+    working_dir: /app
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    restart: always
+    env_file:
+      - ./backend/.env
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - nanoflix_network_backend
+
+  db:
+    image: mysql:8.0
+    container_name: nanoflix_db
+    platform: linux/x86_64
+    ports:
+      - 3306:3306
+    restart: always
+    env_file:
+      - ./backend/.docker.env
+    command: --default-authentication-plugin=mysql_native_password
+    networks:
+      - nanoflix_network_backend
+    healthcheck:
+      test: [ "CMD-SHELL", "mysqladmin ping -h db -u ${MYSQL_USER} -p${MYSQL_PASSWORD}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+networks:
+  nanoflix_network_backend: {}
+  nanoflix_network_frontend: {}
+
+volumes:
+  mysql_data:"
+
+database.js:
+"/* src/database/config/database.js */
+require('dotenv').config();
+
+const options = {
+  username: process.env.MYSQL_USER || 'root',
+  password: process.env.MYSQL_ROOT_PASSWORD || '',
+  database: process.env.MYSQL_DATABASE || 'nanoflix-db',
+  host: process.env.MYSQL_HOST || 'localhost',
+  port: process.env.MYSQL_PORT || 3306,
+  dialect: 'mysql',
+};
+
+module.exports = {
+  development: {
+    logging: process.env.NODE_ENV !== 'production',
+    ...options,
+  },
+  test: {
+    logging: false,
+    ...options,
+  },
+  production: {
+    logging: false,
+    ...options,
+  },
+};"
+
+Corrija o que for necessário.
+
+++++
+Certo, agora para agilizar o nosso processo, eu vou trazer/reaptoveitar muito conteúdo que desenvolvi em outros projetos para reutilizar aqui, mas quero que você atue como verificador de boa lógica e boas práticas, e aponte caso veja alguma má prática ou ponto de melhoria. 
+
+Apesar de saber hoje que existam talvez formas melhores de validar os dados do front, eu utilizei joi anteriormente, e até por ser node.js puro, acho que ele ainda pode satistazer as necessidades, além de que não quero perder tempo demais utilizando outra ferramenta sendo que essa já está praticamente pronta. 
+
+Então eu já descomentei o 'routes' no app. E costumo usar um index nela:
+"/* src/routes/index.js */
+const { Router } = require('express');
+
+const loginRoute = require('./loginRoute.routes');
+const registerRoute = require('./registerRoute.routes');
+
+const router = Router();
+
+router.use('/login', loginRoute);
+router.use('/register', registerRoute);
+
+module.exports = router;"
+
+A rota de login ficaria assim:
+"/* src/routes/loginRoute.routes.js */
+const { Router } = require('express');
+
+const { login, verifyUser } = require('../controllers/userController');
+const { validateLogin } = require('../middlewares/validators');
+const { decode } = require('../middlewares/tokenFunctions');
+
+const router = Router();
+
+router.post('/', validateLogin, login);
+// Rota para verificar a autenticidade do usuário
+router.get('/me', decode, verifyUser);
+
+module.exports = router;"
+
+Não se preocupe com a controller por enquanto. Avalie até aqui, e aí podemos prosseguir para a lógica de validação.
+
++++
+Ok, vamos avançar para a pasta de 'middlewares' então, eu coloquei dentro dela os que você pode ver na imagem anexa. 
+
+index.js está assim:
+"/* src/middlewares/index.js */
+const errorMiddleware = require('./errorMiddleware');
+const tokenFunctions = require('./tokenFunctions');
+const joiSchemas = require('./schemas/userSchemas');
+const validatiors = require('./validators');
+
+module.exports = {
+  errorMiddleware,
+  tokenFunctions,
+  joiSchemas,
+  validatiors,
+};"
+
+O customError fica dentro da pasta 'errors' (pode corrigir o que achar que é necessário, em termos de arquitetura/organização), e tem esse conteúdo:
+"/* src/errors/CustomError.js */
+class CustomError extends Error {
+  constructor(status, message) {
+    super(message);
+    this.status = status;
+    // this.code = code;
+  }
+}
+
+module.exports = CustomError;"
+
+Já o middleware de erro é assim:
+"/* src/middlewares/error.middleware.js */
+const errorMiddleware = (err, _req, res, _next) => {
+  if (err.isBoom) {
+    const boomError = err;
+    console.log('[boomError]', boomError);
+
+    res.status(boomError.output.statusCode).json({
+      statusCode: boomError.output.statusCode,
+      error: boomError.output.payload.error,
+      message: boomError.message,
+    });
+  } else {
+    console.error('[errorMiddleware]:', err);
+    res.status(err.status || 500).json({
+      // code: err.code || 'undefinedError',
+      message: err.message,
+      statusCode: err.status || 500,
+    });
+  }
+};
+
+module.exports = errorMiddleware;"
+
+Avalie até aqui e podemos prosseguir.
+
++++
+Certo, agora o próximo arquivo você vai notar que eu deixei uns comentários para explicação/contexto futuro:
+"/* validators.js */
+const { loginSchema, registerSchema } = require('./joiSchemas');
+/* 
+Utilizamos a classe CustomError nesta função em vez de uma biblioteca externa como o @hapi/boom, devido à necessidade de personalizar os códigos de status HTTP em nossas mensagens de erro. No contexto de uma API REST, os códigos de status HTTP fornecem informações importantes sobre a natureza do erro. Por exemplo, um código de status na faixa 400 geralmente indica um erro do lado do cliente, enquanto um código na faixa 500 indica um erro no servidor.
+
+Dessa forma, a inclusão de códigos de status em nossas mensagens de erro ajuda o cliente da API a entender o que deu errado e como corrigir o problema, além de auxiliar na depuração e registro de erros.
+
+Portanto, a classe CustomError é utilizada aqui devido à sua flexibilidade na personalização dos códigos de status HTTP, que é uma prática comum e recomendada na criação de APIs REST.
+*/
+const CustomError = require('../errors/CustomError');
+
+function validate(schema, schemaName) {
+  return (req, _res, next) => {
+    console.log(`validate ${schemaName}`, req.body);
+
+    const { error } = schema.validate(req.body);
+
+    if (error) {
+      console.log('erro', error.message);
+      let [status, message] = error.message.split('|');
+      /* A linha abaixo garante que o status seja um número, foi criada para corrigir o erro: express deprecated res.status("400"): use res.status(400) instead src/middlewares/error.middleware.js:20:9 */
+      if (!error.message.includes('|')) {
+        status = 400;
+        message = error.message;
+      } else {
+        status = isNaN(status) ? 400 : Number(status);
+      }
+
+      // Se status não for um número (ou seja, a mensagem de erro do Joi não contém '|'),
+      // atribua valores padrão a status e message.
+      if (isNaN(status)) {
+        status = 400;
+        message = error.message;
+      }
+
+      throw new CustomError(status, message);
+    }
+
+    next();
+  }
+}
+
+const validators = {
+  validateLogin: validate(loginSchema, "loginSchema"),
+  validateRegister: validate(registerSchema, "registerSchema"),
+};
+
+module.exports = validators;"
+
+O que acontece é que inicialmente eu usava apenas o customLogger, aí comecei a usar o boom, mas em alguns casos ele não dava total liberdade de customização, que eu julgava ser necessária. Mas acho que agora com você posso ter uma opinião sênior em cima, pois você é um especialista que conhece as melhores práticas de mercado.
+
++++
+Ok, e agora vamos para a avaliação dos schemas:
+"/* src/middlewares/joiSchemas.js */
+const joi = require('joi');
+
+const ALL_FIELDS_MUST_BE_FILLED = '400|Todos os campos devem ser preenchidos';
+const INVALID_FIELDS = '422|Campos inválidos';
+const INCORRECT_PASSWORD = '400|Senha em formato inválido';
+const USERNAME_MUST_HAVE_AT_LEAST_3_CHARACTERS = '400|Nome de usuário deve ter pelo menos 3 caracteres';
+const passwordRegex = /^(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$/;
+const usernameRegex = /^[a-zA-Z0-9_]{3,}$/;
+
+// esquema para login
+const loginSchema = joi.object({
+  identifier: joi.alternatives().try(
+    joi.string().email().required(),
+    joi.string().min(3).required()
+  ).required().error(errors => {
+    errors.forEach(err => {
+      switch (err.code) {
+        case 'string.empty':
+          err.message = ALL_FIELDS_MUST_BE_FILLED;
+          break;
+        case 'string.email':
+          err.message = '400|Identifier deve ser um e-mail válido';
+          break;
+        case 'string.min':
+          err.message = USERNAME_MUST_HAVE_AT_LEAST_3_CHARACTERS;
+          break;
+        case 'any.required':
+          err.message = '400|Identifier deve existir';
+          break;
+        case 'alternatives.match':
+          err.message = '400|Identifier deve ser um e-mail válido ou ter pelo menos 3 caracteres';
+          break;
+        default:
+          err.message = '400|Identifier deve existir';
+          break;
+      }
+    });
+    return errors;
+  }),
+  password: joi.string().required().min(8).pattern(new RegExp(passwordRegex)).messages({
+    'string.min': '400|Senha deve ter pelo menos 8 caracteres',
+    'string.empty': ALL_FIELDS_MUST_BE_FILLED,
+    'string.pattern.base': INCORRECT_PASSWORD,
+    'any.required': '400|Password deve existir',
+  }),
+});
+
+// esquema para registro
+const registerSchema = joi.object({
+  name: joi.string().required().min(5).messages({
+    'string.min': '400|Nome deve ter pelo menos 5 caracteres',
+    'string.empty': ALL_FIELDS_MUST_BE_FILLED,
+    'any.required': '400|Nome deve existir',
+  }),
+  username: joi.string().min(3).required().pattern(new RegExp(usernameRegex)).messages({
+    'string.min': USERNAME_MUST_HAVE_AT_LEAST_3_CHARACTERS,
+    'string.empty': ALL_FIELDS_MUST_BE_FILLED,
+    'any.required': '400|Username deve existir',
+    'string.pattern.base': '400|Username deve conter apenas letras e números',
+  }),
+  email: joi.string().required().email().invalid(joi.ref('username')).messages({
+    'string.empty': ALL_FIELDS_MUST_BE_FILLED,
+    'string.email': INVALID_FIELDS,
+    'any.required': '400|Email deve existir',
+    'any.invalid': '400|Email e username não podem ser iguais',
+  }),
+  password: joi.string().required().min(8).pattern(new RegExp(passwordRegex)).messages({
+    'string.min': INCORRECT_PASSWORD,
+    'string.empty': ALL_FIELDS_MUST_BE_FILLED,
+    'string.pattern.base': INCORRECT_PASSWORD,
+    'any.required': '400|Password deve existir',
+  }),
+});
+
+module.exports = { loginSchema, registerSchema };"
+
++++
+Ok, e para finalizar, 'tokenFunctions', lembrando que você pode e deve usar customLogger aqui também:
+"/* src/middlewares/tokenFunctions.js */
+const jwt = require('jsonwebtoken');
+const boom = require('@hapi/boom');
+require('dotenv').config(); // precisa disso?
+
+const secret = process.env.JWT_SECRET || 'secret';
+
+const tokenFunctions = {
+  generateToken: (user) => {
+    const signOptions = {
+      expiresIn: '24h',
+      algorithm: 'HS256',
+    };
+
+    const token = jwt.sign({ id: user.id, email: user.email, username: user.username, role: user.role }, secret, signOptions);
+    console.log('token', token);
+    return token;
+  },
+
+  decode: (req, _res, next) => {
+    let token = req.headers.authorization;
+    // console.log('tokenDecode', token);
+
+    if (!token) throw new boom.unauthorized('Token not provided');
+    // if (!token) throw new CustomError(401, 'Token not provided');
+
+    // Se o token começa com 'Bearer ', remove 'Bearer '
+    if (token.startsWith('Bearer ')) {
+      token = token.slice(7, token.length);
+    }
+
+    try {
+      const decoded = jwt.verify(token, secret);
+      console.log('decoded', decoded);
+
+      req.user = decoded;
+
+      next();
+    } catch (err) {
+      throw new boom.unauthorized('Token is malformed');
+      // throw new CustomError(401, 'Token is malformed');
+    }
+  },
+
+  // Função que verifica se o usuário está autenticado e se possui o papel (role) necessário para acessar a rota
+  authorize: (roles) => (req, _res, next) => {
+    if (!req.user) throw boom.unauthorized('User is not authenticated');
+    
+    const { role } = req.user;
+
+    if (!roles.includes(role)) throw boom.forbidden('User is not authorized');
+
+    next();
+  }
+};
+
+module.exports = tokenFunctions;"
+
++++
+Certo, agora vamos para a controller:
+"/* src/controllers/userController.js */
+const boom = require('@hapi/boom');
+const userService = require('../services/userService');
+
+const login = async (req, res, _next) => {
+  console.log('login', req.body);
+  const result = await userService.login(req.body);
+
+  return res.status(200).json(result);
+};
+
+const register = async (req, res, _next) => {
+  console.log('registerController', req.body);
+  // const { name, username, email } = req.body;
+  const result = await userService.createNewUser(req.body);
+
+  return res.status(201).json(result);
+};
+
+/* Função que a ser utilizada durante inserção do username e email no formulário de cadastro */
+const checkUserExists = async (req, res, _next) => {
+  // console.log('checkUserExists', req.body);
+  const result = await userService.checkUserExists(req.body);
+  
+  return res.status(200).json(result);
+};
+
+const verifyUser = async (req, res, _next) => {
+  if (!req.user) throw boom.unauthorized('User is not authenticated');
+  const { id } = req.user;
+  const result = await userService.verifyUser(id);
+
+  return res.status(200).json(result);
+};
+
+module.exports = {
+  login,
+  register,
+  checkUserExists,
+  verifyUser,
+};"
+
++++
+E para finalizar por hoje, a service:
+"/* src/services/index.js */
+const userService = require('./userService');
+
+module.exports = {
+  userService
+};
+
+...
+/* src/services/userService.js */
+const bcrypt = require('bcrypt');
+const { User } = require('../models/models')
+const tokenValidator = require('../middlewares/tokenFunctions');
+const boom = require('@hapi/boom');
+
+const checkUserExistsBy = async (usernameOrEmail) => {
+  // console.log('checkUserExistsBy', usernameOrEmail);
+  const result = await User.findOne({ 
+    $or: [ { username: usernameOrEmail }, { email: usernameOrEmail } ] 
+  });
+
+  return result;
+};
+
+const login = async (userData) => {
+  const { identifier, password } = userData;
+
+  const user = await checkUserExistsBy(identifier);
+  console.log('user', user);
+
+  if (!user) throw boom.notFound('User not found');
+  // if (!user) throw new CustomError(404, 'User not found');
+
+  const isPasswordValid = await bcrypt.compare(password, user.password);
+
+  if (!isPasswordValid) throw boom.unauthorized('Incorrect password');
+  // if (!isPasswordValid) throw new CustomError(401, 'Incorrect password');
+
+  const token = tokenValidator.generateToken(user);
+
+  const result = { token, id: user.id, email: user.email, username: user.username, role: user.role };
+  return result;
+};
+
+const checkUserExists = async (userData) => {
+  const { identifier } = userData;
+  
+  const user = await checkUserExistsBy(identifier);
+  
+  console.log('user', user);
+
+  if (user) throw new boom.conflict('User already exists');
+
+  return { message: 'User does not exist' };
+};
+
+// função responsável por criar um novo usuário no banco de dados
+const createNewUser = async (userData) => {
+  // primeiro verifica se o usuário já existe no banco de dados
+  const { name, username, email, password } = userData;
+  const user = await checkUserExistsBy(email);
+
+  if (user) throw boom.conflict('User already exists');
+  // if (user) throw new CustomError(409, 'User already exists'); 
+
+  // segundo encripta a senha com o bcrypt
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  const newUser = await User.create({
+    name,
+    username,
+    email,
+    password: hashedPassword,
+    role: 'customer',
+    cashback_value: 0
+  });
+
+  // caso ocorra algum problema e o usuário não seja criado,
+  // retorna um erro personalizado.
+  if (!newUser) throw new boom(500, 'Failed to create user');
+  // if (!newUser) throw new CustomError(500, 'Failed to create user');
+
+  return { message: 'User created successfully' };
+};
+
+const verifyUser = async (userId) => {
+  const user = await User.findById(userId);
+  if (!user) throw boom.notFound('User not found');
+
+  // const cashbackValue = User.findOne({ _id: userId }, { cashback_value: 1 });
+
+  const userResponse = {
+    // id: user._id,
+    // username: user.username,
+    // email: user.email,
+    // role: user.role,
+    cashbackValue: user.cashback_value
+  };
+
+  return userResponse;
+};
+
+module.exports = {
+  login,
+  checkUserExists,
+  createNewUser,
+  verifyUser,
+};"
+
+Essa parte de 'cashbackValue' fazoa sentrido no outro projeto, aqui não sei como podemos fazer. 
+
+
+================================
+16/03
+================================ 
+Certo, agora fui iniciar o projeto pelo 'npm run dev' e deu um erro, mas acho que vamos precisar rever os scripts, não sei se faz sentido ele resetar o banco toda vez que for iniciar o projeto, e até aonde eu me lembre, o 'predev' sempre é chamado antes do dev. Estamos assim:
+""scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon --watch \"./src/**\" src/server.js",
+    "predev": "npm run db:reset",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "db:reset": "npx sequelize-cli db:drop && npx sequelize-cli db:create && npx sequelize-cli db:migrate",
+    "db:seed": "npx sequelize-cli db:seed:all"
+  },"
+
+E depois de revisar os scripts, analise o resultado da interação, pois acho que vamos ter que corrigir algo:
+"samuel@holydesk-linux:/media/samuel/dados-linux13/testes-tecnicos/nanoflix/backend$ npm run dev
+
+> backend@1.0.0 predev
+> npm run db:reset
+
+
+> backend@1.0.0 db:reset
+> npx sequelize-cli db:drop && npx sequelize-cli db:create && npx sequelize-cli db:migrate
+
+
+Sequelize CLI [Node: 20.17.0, CLI: 6.6.2, ORM: 6.37.6]
+
+Loaded configuration file "src/database/config/database.js".
+Using environment "development".
+Executing (default): DROP DATABASE IF EXISTS `nanoflix-db`
+Database nanoflix-db dropped.
+
+Sequelize CLI [Node: 20.17.0, CLI: 6.6.2, ORM: 6.37.6]
+
+Loaded configuration file "src/database/config/database.js".
+Using environment "development".
+Executing (default): CREATE DATABASE IF NOT EXISTS `nanoflix-db`
+Database nanoflix-db created.
+
+Sequelize CLI [Node: 20.17.0, CLI: 6.6.2, ORM: 6.37.6]
+
+Loaded configuration file "src/database/config/database.js".
+Using environment "development".
+Executing (default): SELECT 1+1 AS result
+Executing (default): SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_SCHEMA = 'nanoflix-db';
+Executing (default): SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_NAME = 'SequelizeMeta' AND TABLE_SCHEMA = 'nanoflix-db'
+Executing (default): CREATE TABLE IF NOT EXISTS `SequelizeMeta` (`name` VARCHAR(255) NOT NULL UNIQUE , PRIMARY KEY (`name`)) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE utf8_unicode_ci;
+Executing (default): SHOW INDEX FROM `SequelizeMeta`
+Executing (default): SELECT `name` FROM `SequelizeMeta` AS `SequelizeMeta` ORDER BY `SequelizeMeta`.`name` ASC;
+Executing (default): SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_NAME = 'SequelizeMeta' AND TABLE_SCHEMA = 'nanoflix-db'
+Executing (default): SHOW INDEX FROM `SequelizeMeta`
+Executing (default): SELECT `name` FROM `SequelizeMeta` AS `SequelizeMeta` ORDER BY `SequelizeMeta`.`name` ASC;
+Executing (default): SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_NAME = 'SequelizeMeta' AND TABLE_SCHEMA = 'nanoflix-db'
+Executing (default): SHOW INDEX FROM `SequelizeMeta`
+Executing (default): SELECT `name` FROM `SequelizeMeta` AS `SequelizeMeta` ORDER BY `SequelizeMeta`.`name` ASC;
+== 20250315230827-create-user: migrating =======
+Executing (default): CREATE TABLE IF NOT EXISTS `Users` (`id` INTEGER NOT NULL auto_increment , `name` VARCHAR(255), `email` VARCHAR(255), `password` VARCHAR(255), `createdAt` DATETIME NOT NULL, `updatedAt` DATETIME NOT NULL, PRIMARY KEY (`id`)) ENGINE=InnoDB;
+Executing (default): SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_NAME = 'SequelizeMeta' AND TABLE_SCHEMA = 'nanoflix-db'
+Executing (default): SHOW INDEX FROM `SequelizeMeta`
+Executing (default): INSERT INTO `SequelizeMeta` (`name`) VALUES (?);
+== 20250315230827-create-user: migrated (0.021s)
+
+
+> backend@1.0.0 dev
+> nodemon --watch "./src/**" src/server.js
+
+[nodemon] 3.1.9
+[nodemon] to restart at any time, enter `rs`
+[nodemon] watching path(s): src/**
+[nodemon] watching extensions: js,mjs,cjs,json
+[nodemon] starting `node src/server.js`
+/media/samuel/dados-linux13/testes-tecnicos/nanoflix/backend/node_modules/express/lib/router/route.js:216
+        throw new Error(msg);
+        ^
+
+Error: Route.post() requires a callback function but got a [object Undefined]
+    at Route.<computed> [as post] (/media/samuel/dados-linux13/testes-tecnicos/nanoflix/backend/node_modules/express/lib/router/route.js:216:15)
+    at proto.<computed> [as post] (/media/samuel/dados-linux13/testes-tecnicos/nanoflix/backend/node_modules/express/lib/router/index.js:521:19)
+    at Object.<anonymous> (/media/samuel/dados-linux13/testes-tecnicos/nanoflix/backend/src/routes/register.routes.js:10:8)
+    at Module._compile (node:internal/modules/cjs/loader:1469:14)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1548:10)
+    at Module.load (node:internal/modules/cjs/loader:1288:32)
+    at Module._load (node:internal/modules/cjs/loader:1104:12)
+    at Module.require (node:internal/modules/cjs/loader:1311:19)
+    at require (node:internal/modules/helpers:179:18)
+    at Object.<anonymous> (/media/samuel/dados-linux13/testes-tecnicos/nanoflix/backend/src/routes/index.js:5:24)
+
+Node.js v20.17.0
+[nodemon] app crashed - waiting for file changes before starting..."
+
+Vale lembrar que apenas criamos a estrutura base da tabela de user, ela está vazia atualmente. 
+
++++
+Ok, eu acatei a sua sugestão de scripts, e agora vamos tentar entender o problema na rota de register, apesar de eu achar estranho esse erro agora, visto que a rota não foi chamada ainda.
+
+A parte de routes está assim:
+"/* src/routes/index.js */
+const router = require('express').Router();
+
+const loginRoutes = require('./login.routes');
+const registerRoutes = require('./register.routes');
+
+router.use('/login', loginRoutes);
+router.use('/register', registerRoutes);
+
+module.exports = router;
+
+...
+/* src/routes/registerRoute.routes.js */
+const { Router } = require('express');
+
+const { register, checkUserExists } = require('../controllers/userController');
+const { validateRegister, validateCheckUserExists } = require('../middlewares/validators');
+
+const router = Router();
+
+router.post('/', validateRegister, register);
+router.post('/check', validateCheckUserExists, checkUserExists);
+
+module.exports = router;"
+
+Primeiro ele chama 'validateRegister', certo? Vamos a ela:
+"/* src/middlewares/validators.js */
+const { loginSchema, registerSchema } = require('./joiSchemas');
+const CustomError = require('../errors/CustomError');
+const logger = require('../utils/customLogger');
+
+/**
+ * Função auxiliar para extrair código de status e mensagem do erro do Joi.
+ * Se o erro não seguir o padrão "STATUS|Mensagem", assume status 400.
+ */
+const parseJoiError = (error) => {
+  if (!error.message.includes('|')) {
+    return { status: 400, message: error.message };
+  }
+
+  const [status, message] = error.message.split('|');
+  return {
+    status: isNaN(status) ? 400 : Number(status),
+    message,
+  };
+};
+
+/**
+ * Middleware de validação utilizando Joi e a classe CustomError.
+ */
+function validate(schema, schemaName) {
+  return (req, _res, next) => {
+    logger.debug('Validation', `Validating ${schemaName}`, JSON.stringify(req.body));
+
+    const { error } = schema.validate(req.body);
+
+    if (error) {
+      const { status, message } = parseJoiError(error);
+
+      logger.warn('ValidationError', `Validation failed: ${message}`, `Schema: ${schemaName}`);
+
+      throw new CustomError(status, message);
+    }
+
+    next();
+  };
+}
+
+const validators = {
+  validateLogin: validate(loginSchema, 'loginSchema'),
+  validateRegister: validate(registerSchema, 'registerSchema'),
+};
+
+module.exports = validators;"
+
+E os schemas:
+"/* src/middlewares/joiSchemas.js */
+const joi = require('joi');
+
+const errorMessages = {
+  allFieldsRequired: '400|Todos os campos devem ser preenchidos',
+  invalidFields: '422|Campos inválidos',
+  incorrectPassword: '400|Senha em formato inválido',
+  usernameMinLength: '400|Nome de usuário deve ter pelo menos 3 caracteres',
+  passwordMinLength: '400|Senha deve ter pelo menos 8 caracteres',
+  usernameInvalid: '400|Username deve conter apenas letras, números e underscores',
+  emailRequired: '400|Email deve existir',
+  emailInvalid: '400|Email deve ser válido',
+  emailUsernameEqual: '400|Email e username não podem ser iguais',
+};
+
+const passwordRegex = /^(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$/;
+const usernameRegex = /^[a-zA-Z0-9_]{3,}$/;
+
+/**
+ * Função para personalizar mensagens de erro no Joi
+ */
+const customJoiErrorHandler = (errors) => {
+  errors.forEach((err) => {
+    switch (err.code) {
+      case 'string.empty':
+        err.message = errorMessages.allFieldsRequired;
+        break;
+      case 'string.email':
+        err.message = errorMessages.emailInvalid;
+        break;
+      case 'string.min':
+        err.message = errorMessages.usernameMinLength;
+        break;
+      case 'any.required':
+        err.message = '400|Campo obrigatório';
+        break;
+      case 'alternatives.match':
+        err.message = '400|Identifier deve ser um e-mail válido ou ter pelo menos 3 caracteres';
+        break;
+      default:
+        err.message = '400|Erro de validação';
+        break;
+    }
+  });
+  return errors;
+};
+
+// Esquema para login
+const loginSchema = joi.object({
+  identifier: joi.alternatives()
+    .try(joi.string().email(), joi.string().min(3))
+    .required()
+    .error(customJoiErrorHandler),
+  password: joi.string()
+    .min(8)
+    .pattern(passwordRegex)
+    .required()
+    .messages({
+      'string.min': errorMessages.passwordMinLength,
+      'string.empty': errorMessages.allFieldsRequired,
+      'string.pattern.base': errorMessages.incorrectPassword,
+      'any.required': '400|Password deve existir',
+    }),
+});
+
+// Esquema para registro
+const registerSchema = joi.object({
+  name: joi.string().min(5).required().messages({
+    'string.min': '400|Nome deve ter pelo menos 5 caracteres',
+    'string.empty': errorMessages.allFieldsRequired,
+    'any.required': '400|Nome deve existir',
+  }),
+  username: joi.string().min(3).pattern(usernameRegex).required().messages({
+    'string.min': errorMessages.usernameMinLength,
+    'string.empty': errorMessages.allFieldsRequired,
+    'any.required': '400|Username deve existir',
+    'string.pattern.base': errorMessages.usernameInvalid,
+  }),
+  email: joi.string().email().invalid(joi.ref('username')).required().messages({
+    'string.empty': errorMessages.allFieldsRequired,
+    'string.email': errorMessages.emailInvalid,
+    'any.required': errorMessages.emailRequired,
+    'any.invalid': errorMessages.emailUsernameEqual,
+  }),
+  password: joi.string().min(8).pattern(passwordRegex).required().messages({
+    'string.min': errorMessages.passwordMinLength,
+    'string.empty': errorMessages.allFieldsRequired,
+    'string.pattern.base': errorMessages.incorrectPassword,
+    'any.required': '400|Password deve existir',
+  }),
+});
+
+module.exports = { loginSchema, registerSchema };"
+
+Veja se até aqui está tudo certo.
+
++++
+Ok, já vi o problema. No outro projeto eu tinha esse schema:
+"// esquema para verificar se o usuário existe
+const checkUserSchema = joi.object({
+  identifier: joi.alternatives().try(joi.string().email(), joi.string().min(3)).required().messages({
+    'string.empty': ALL_FIELDS_MUST_BE_FILLED,
+    'alternatives.try': INVALID_FIELDS,
+    'any.required': '400|Identifier deve existir',
+  }),
+});"
+
+Que era chamado em validators:
+"validateCheckUserExists: validate(checkUserSchema, "checkUserSchema"),"
+
+Veja se faz sentido incluirmos ele em nosso projeto, nossos schemas atualmente estão assim:
+"/* src/middlewares/joiSchemas.js */
+const joi = require('joi');
+
+const errorMessages = {
+  allFieldsRequired: '400|Todos os campos devem ser preenchidos',
+  invalidFields: '422|Campos inválidos',
+  incorrectPassword: '400|Senha em formato inválido',
+  usernameMinLength: '400|Nome de usuário deve ter pelo menos 3 caracteres',
+  passwordMinLength: '400|Senha deve ter pelo menos 8 caracteres',
+  usernameInvalid: '400|Username deve conter apenas letras, números e underscores',
+  emailRequired: '400|Email deve existir',
+  emailInvalid: '400|Email deve ser válido',
+  emailUsernameEqual: '400|Email e username não podem ser iguais',
+};
+
+const passwordRegex = /^(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$/;
+const usernameRegex = /^[a-zA-Z0-9_]{3,}$/;
+
+/**
+ * Função para personalizar mensagens de erro no Joi
+ */
+const customJoiErrorHandler = (errors) => {
+  errors.forEach((err) => {
+    switch (err.code) {
+      case 'string.empty':
+        err.message = errorMessages.allFieldsRequired;
+        break;
+      case 'string.email':
+        err.message = errorMessages.emailInvalid;
+        break;
+      case 'string.min':
+        err.message = errorMessages.usernameMinLength;
+        break;
+      case 'any.required':
+        err.message = '400|Campo obrigatório';
+        break;
+      case 'alternatives.match':
+        err.message = '400|Identifier deve ser um e-mail válido ou ter pelo menos 3 caracteres';
+        break;
+      default:
+        err.message = '400|Erro de validação';
+        break;
+    }
+  });
+  return errors;
+};
+
+// Esquema para login
+const loginSchema = joi.object({
+  identifier: joi.alternatives()
+    .try(joi.string().email(), joi.string().min(3))
+    .required()
+    .error(customJoiErrorHandler),
+  password: joi.string()
+    .min(8)
+    .pattern(passwordRegex)
+    .required()
+    .messages({
+      'string.min': errorMessages.passwordMinLength,
+      'string.empty': errorMessages.allFieldsRequired,
+      'string.pattern.base': errorMessages.incorrectPassword,
+      'any.required': '400|Password deve existir',
+    }),
+});
+
+// Esquema para registro
+const registerSchema = joi.object({
+  name: joi.string().min(5).required().messages({
+    'string.min': '400|Nome deve ter pelo menos 5 caracteres',
+    'string.empty': errorMessages.allFieldsRequired,
+    'any.required': '400|Nome deve existir',
+  }),
+  username: joi.string().min(3).pattern(usernameRegex).required().messages({
+    'string.min': errorMessages.usernameMinLength,
+    'string.empty': errorMessages.allFieldsRequired,
+    'any.required': '400|Username deve existir',
+    'string.pattern.base': errorMessages.usernameInvalid,
+  }),
+  email: joi.string().email().invalid(joi.ref('username')).required().messages({
+    'string.empty': errorMessages.allFieldsRequired,
+    'string.email': errorMessages.emailInvalid,
+    'any.required': errorMessages.emailRequired,
+    'any.invalid': errorMessages.emailUsernameEqual,
+  }),
+  password: joi.string().min(8).pattern(passwordRegex).required().messages({
+    'string.min': errorMessages.passwordMinLength,
+    'string.empty': errorMessages.allFieldsRequired,
+    'string.pattern.base': errorMessages.incorrectPassword,
+    'any.required': '400|Password deve existir',
+  }),
+});
+
+module.exports = { loginSchema, registerSchema };"
+
++++
+Certo, resolvemos isso. Agora antes de prosseguirmos, acho que pode fazer sentido configurar o ambiente de debugger. Eu já criei o launch.json, que está assim:
+"{
+  // Use o IntelliSense para saber mais sobre os atributos possíveis.
+  // Focalizar para exibir as descrições dos atributos existentes.
+  // Para obter mais informações, acesse: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node-terminal",
+      "request": "launch",
+      "name": "Local",
+      "command": "npm run debug"
+    }
+  ]
+}"
+
+E o script no package.json:
+""debug": "nodemon --inspect --ignore node_modules/ --ignore test/ --require ./instrumentation.js ./bin/www","
+
+O problema é que o launch.json fica dentro da pasta '.vscode', que fica na raiz. Então precisamos apontar o caminho da pasta backend, certo? Assim ele pode acessar o comando 'npm run debug' corretamente.
+
++++
+Ok, tivemos um erro:
+"samuel@holydesk-linux:/media/samuel/dados-linux13/testes-tecnicos/nanoflix/backend$ npm run db:seed
+
+> backend@1.0.0 db:seed
+> npx sequelize-cli db:seed:all
+
+
+Sequelize CLI [Node: 20.17.0, CLI: 6.6.2, ORM: 6.37.6]
+
+Loaded configuration file "src/database/config/database.js".
+Using environment "development".
+Executing (default): SELECT 1+1 AS result
+== 20250316172220-admin-user: migrating =======
+Executing (default): INSERT INTO `Users` (`name`,`username`,`email`,`password`,`role`,`createdAt`,`updatedAt`) VALUES ('Admin User','admin','admin@nanoflix.com','$2b$10$GqNghuw/exaDX9vQxMhZRejQdgiUDnqSLMuQgwvBjF8nSCPZKE6uq','admin','2025-03-16 17:23:54','2025-03-16 17:23:54');
+
+ERROR: Unknown column 'username' in 'field list'
+
+samuel@holydesk-linux:/media/samuel/dados-linux13/testes-tecnicos/nanoflix/backend$ "
+
+Eu estava vendo a model, e ela não possui o campo 'name', na verdade:
+"'use strict';
+const { Model, DataTypes } = require('sequelize');
+
+module.exports = (sequelize) => {
+  class User extends Model {
+    static associate(models) {
+      // Futuras associações serão definidas aqui
+    }
+  }
+
+  User.init(
+    {
+      id: {
+        type: DataTypes.INTEGER,
+        autoIncrement: true,
+        primaryKey: true,
+      },
+      username: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
+      email: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        unique: true, // Garantir que não haja e-mails duplicados
+        validate: {
+          isEmail: true, // Validação automática para e-mails
+        },
+      },
+      password: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
+      role: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        defaultValue: 'user', // Pode ser 'admin' ou 'user'
+      },
+    },
+    {
+      sequelize,
+      modelName: 'User',
+      tableName: 'users', // Definindo explicitamente o nome da tabela
+      underscored: true, // Converte camelCase para snake_case no banco
+      timestamps: false, // Não cria 'createdAt' e 'updatedAt'
+    }
+  );
+
+  return User;
+};
+"
+
+Porém a esturtura do banco parece estar bem desatualizada, como pode ver na imagem. Acho que vamos precisar ajustar a model e depois reiniciar o banco para ter ambos name e username. O que me diz?
+
++++
+Ok, ainda deu erro, veja:
+"[*Server*]: ✅ Server is running on http://localhost:3001
+[*Validation*]: Validating registerSchema {"name":"Usuário Teste","username":"teste_user","email":"teste@nanoflix.com","password":"Teste@123"}
+[*UserController*]: Tentativa de registro teste@nanoflix.com
+[*UserService*]: Tentativa de criação de usuário teste@nanoflix.com
+[*UserService*]: Verificando existência de usuário teste@nanoflix.com
+Executing (default): SELECT `id`, `name`, `username`, `email`, `password`, `role`, `created_at` AS `createdAt`, `updated_at` AS `updatedAt` FROM `users` AS `User` WHERE (`User`.`username` = 'teste@nanoflix.com' OR `User`.`email` = 'teste@nanoflix.com') LIMIT 1;
+[*UserController*]: Erro ao registrar usuário Unknown column 'created_at' in 'field list'
+[*ErrorMiddleware*]: Unhandled error Unknown column 'created_at' in 'field list'"
+
+A model está assim:
+"'use strict';
+const { Model, DataTypes, Sequelize } = require('sequelize');
+
+module.exports = (sequelize) => {
+  class User extends Model {
+    static associate(models) {
+      // Futuras associações serão definidas aqui
+    }
+  }
+
+  User.init(
+    {
+      id: {
+        type: DataTypes.INTEGER,
+        autoIncrement: true,
+        primaryKey: true,
+      },
+      name: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
+      username: {
+        type: Sequelize.STRING,
+        allowNull: false,
+        unique: true,
+      },
+      email: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        unique: true, // Garantir que não haja e-mails duplicados
+        validate: {
+          isEmail: true, // Validação automática para e-mails
+        },
+      },
+      password: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
+      role: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        defaultValue: 'user', // Pode ser 'admin' ou 'user'
+      },
+    },
+    {
+      sequelize,
+      modelName: 'User',
+      tableName: 'users', // Definindo explicitamente o nome da tabela
+      underscored: true, // Converte camelCase para snake_case no banco
+      timestamps: true, // Habilita createdAt e updatedAt automaticamente
+    }
+  );
+
+  return User;
+};"
+
+E a migration:
+"'use strict';
+/** @type {import('sequelize-cli').Migration} */
+module.exports = {
+  up: async (queryInterface, Sequelize) => {
+    await queryInterface.createTable('users', {
+      id: {
+        type: Sequelize.INTEGER,
+        autoIncrement: true,
+        primaryKey: true,
+        allowNull: false,
+      },
+      name: {
+        type: Sequelize.STRING,
+        allowNull: false,
+      },
+      username: {
+        type: Sequelize.STRING,
+        allowNull: false,
+        unique: true,
+      },
+      email: {
+        type: Sequelize.STRING,
+        allowNull: false,
+        unique: true,
+      },
+      password: {
+        type: Sequelize.STRING,
+        allowNull: false,
+      },
+      role: {
+        type: Sequelize.STRING,
+        allowNull: false,
+        defaultValue: 'user', // Define o padrão como 'user'
+      },
+      createdAt: {
+        type: Sequelize.DATE,
+        allowNull: false,
+      },
+      updatedAt: {
+        type: Sequelize.DATE,
+        allowNull: false,
+      },
+    });
+  },
+
+  down: async (queryInterface) => {
+    await queryInterface.dropTable('users');
+  },
+};"
+
+A seed está indos em problema:
+"samuel@holydesk-linux:/media/samuel/dados-linux13/testes-tecnicos/nanoflix/backend$ npm run db:seed
+
+> backend@1.0.0 db:seed
+> npx sequelize-cli db:seed:all
+
+
+Sequelize CLI [Node: 20.17.0, CLI: 6.6.2, ORM: 6.37.6]
+
+Loaded configuration file "src/database/config/database.js".
+Using environment "development".
+Executing (default): SELECT 1+1 AS result
+== 20250316172220-admin-user: migrating =======
+Executing (default): INSERT INTO `users` (`name`,`username`,`email`,`password`,`role`,`createdAt`,`updatedAt`) VALUES ('Admin User','admin','admin@nanoflix.com','$2b$10$DMYt4Wk1o5udh01.ZHBRbeILMVhpkRLj2AgIl6elXiH5VDqvhZbd6','admin','2025-03-16 17:48:25','2025-03-16 17:48:25');
+== 20250316172220-admin-user: migrated (0.087s)
+
+samuel@holydesk-linux:/media/samuel/dados-linux13/testes-tecnicos/nanoflix/backend$ "
+
+Eu acho que como não estamos passando createdAt, ele deveria gerar automaticamente.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
