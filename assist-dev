@@ -2318,6 +2318,366 @@ samuel@holydesk-linux:/media/samuel/dados-linux13/testes-tecnicos/nanoflix/backe
 
 Eu acho que como não estamos passando createdAt, ele deveria gerar automaticamente.
 
++++
+Certo, então vamos dar prosseguimento a implementação do backend. Sua proposta inicial foi essa:
+"1️⃣ Catálogo de Filmes e Séries (Estilo Netflix)
+
+📌 Pontos positivos:
+✅ Simples: 3 tabelas principais (users, movies, reviews).
+✅ Boa demonstração de CRUD e autenticação.
+✅ Fácil de expandir com extras, como favoritos ou recomendações.
+✅ Pode ter um frontend simples com listagem de filmes.
+
+📌 Tabelas:
+
+    Users (id, name, email, password, createdAt)
+    Movies (id, title, description, genre, releaseYear, createdAt)
+    Reviews (id, userId, movieId, rating, comment, createdAt)
+
+📌 Rotas:
+
+    POST /users (registro)
+    POST /login (autenticação JWT)
+    GET /movies (listar filmes)
+    POST /movies (adicionar filme - opcional)
+    POST /reviews (usuários adicionam reviews)
+
+📌 Extras possíveis:
+
+    Upload de imagem do filme.
+    Deploy fácil (ex: Vercel, Heroku)."
+
+O que fizemos/mudanlas
+- Nós já criamos a tabela Users, contendo além de name, username. 
+- Nós já criamos as rotas de login e registro (essa em /register).
+
+Pode organizar as próximas ações? Esses movies já vão ter que estar no banco via seed, certo? Um deles quero que seja Interestelar, me ajude a escolher mais 4 filmes icônicos (acho que 5 é um número suficiente para um MVP, o que me diz?).
+
++++
+Calma, antes de iniciarmos a migration e model dos filmes vamos conversar um pouco mais sobre isso. Eu acho que o filme sem a imagem vai deixar muito a desejar. 
+
+Eu quero que me sugira a solução mais adequada aqui, mas eu sei que é possível deixar fotos (que eu irei buscar na internet) dentro da pasta uploads e aí ter um campo para elas no banco, como:
+"url_image: {
+        allowNull: false,
+        type: Sequelize.STRING
+      },"
+
+Ficando a seed como algo que fiz em outro projeto:
+"{
+          id: 1,
+          name: 'Skol Lata 250ml',
+          price: 2.20,
+          url_image: 'http://localhost:3001/images/skol_lata_350ml.jpg'
+        },"
+
+E aí no caso usaria algo como isso no app.js:
+"app.use('/images', express.static(uploadPath));"
+
+O que me diz?
+
++++
+Certo, já finalizamos os schemas, agora vamos para a controller. Vou mostrar como ficou a de user, para ter como referência do padrão:
+"/* src/controllers/userController.js */
+const boom = require('@hapi/boom');
+const userService = require('../services/userService');
+const logger = require('../utils/customLogger');
+
+const userController = {
+  login: async (req, res, next) => {
+    try {
+      logger.info('UserController', 'Tentativa de login', req.body.email);
+      const result = await userService.login(req.body);
+
+      logger.info('UserController', 'Login bem-sucedido', req.body.email);
+      return res.status(200).json(result);
+    } catch (err) {
+      logger.error('UserController', 'Erro no login', err.message);
+      next(err);
+    }
+  },
+
+  register: async (req, res, next) => {
+    try {
+      logger.info('UserController', 'Tentativa de registro', req.body.email);
+      const result = await userService.createNewUser(req.body);
+
+      logger.info('UserController', 'Usuário registrado com sucesso', req.body.email);
+      return res.status(201).json(result);
+    } catch (err) {
+      logger.error('UserController', 'Erro ao registrar usuário', err.message);
+      next(err);
+    }
+  },
+
+  checkUserExists: async (req, res, next) => {
+    try {
+      logger.info('UserController', 'Verificando existência de usuário', req.body.email);
+      const result = await userService.checkUserExists(req.body);
+
+      return res.status(200).json(result);
+    } catch (err) {
+      logger.error('UserController', 'Erro ao verificar usuário', err.message);
+      next(err);
+    }
+  },
+
+  verifyUser: async (req, res, next) => {
+    try {
+      if (!req.user) {
+        logger.warn('UserController', 'Tentativa de verificação sem autenticação');
+        throw boom.unauthorized('User is not authenticated');
+      }
+
+      logger.info('UserController', 'Verificando usuário autenticado', req.user.email);
+      const { id } = req.user;
+      const result = await userService.verifyUser(id);
+
+      return res.status(200).json(result);
+    } catch (err) {
+      logger.error('UserController', 'Erro ao verificar usuário', err.message);
+      next(err);
+    }
+  },
+};
+
+module.exports = userController;"
+
+Lembrando que nossa rota está assim:
+"/* src/routes/movies.routes.js */
+const { Router } = require('express');
+
+const { getMovies, createMovie } = require('../controllers/moviesController');
+const { validateMovie } = require('../middlewares/validators');
+const { decode, authorize } = require('../middlewares/tokenFunctions');
+
+const router = Router();
+
+router.get('/', getMovies);
+router.post('/', decode, authorize(['admin']), validateMovie, createMovie);
+
+module.exports = router;"
+
++++
+Ok, estamos de novo com o problema de snake_case. Eu achei que você tinha entendido que usaríamos o padrão de snake_case no banco. Veja os logs:
+"[*Server*]: ✅ Server is running on http://localhost:3001
+[*MoviesController*]: Buscando lista de filmes 
+[*MoviesService*]: Buscando todos os filmes 
+Executing (default): SELECT `id`, `title`, `description`, `genre`, `release_year` AS `releaseYear`, `url_image`, `created_at` AS `createdAt`, `updated_at` AS `updatedAt` FROM `movies` AS `Movie`;
+[*MoviesController*]: Erro ao buscar filmes Unknown column 'release_year' in 'field list'
+[*ErrorMiddleware*]: Unhandled error Unknown column 'release_year' in 'field list'
+[*MoviesController*]: Buscando lista de filmes 
+[*MoviesService*]: Buscando todos os filmes 
+Executing (default): SELECT `id`, `title`, `description`, `genre`, `release_year` AS `releaseYear`, `url_image`, `created_at` AS `createdAt`, `updated_at` AS `updatedAt` FROM `movies` AS `Movie`;"
+
+A model está assim:
+"const { Model, DataTypes, Sequelize } = require('sequelize');
+
+'use strict';
+module.exports = (sequelize) => {
+  class Movie extends Model {}
+
+  Movie.init(
+    {
+      id: {
+        type: DataTypes.INTEGER,
+        autoIncrement: true,
+        primaryKey: true,
+      },
+      title: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        unique: true,
+      },
+      description: {
+        type: DataTypes.TEXT,
+        allowNull: false,
+      },
+      genre: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
+      releaseYear: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+      },
+      url_image: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
+    },
+    {
+      sequelize,
+      modelName: 'Movie',
+      tableName: 'movies',
+      underscored: true,
+      timestamps: true,
+    }
+  );
+
+  return Movie;
+};"
+
+E a migration:
+"'use strict';
+
+/** @type {import('sequelize-cli').Migration} */
+module.exports = {
+  up: async (queryInterface, Sequelize) => {
+    await queryInterface.createTable('movies', {
+      id: {
+        type: Sequelize.INTEGER,
+        autoIncrement: true,
+        primaryKey: true,
+        allowNull: false,
+      },
+      title: {
+        type: Sequelize.STRING,
+        allowNull: false,
+        unique: true,
+      },
+      description: {
+        type: Sequelize.TEXT,
+        allowNull: false,
+      },
+      genre: {
+        type: Sequelize.STRING,
+        allowNull: false,
+      },
+      releaseYear: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+      },
+      url_image: {
+        type: Sequelize.STRING,
+        allowNull: false,
+      },
+      createdAt: {
+        type: Sequelize.DATE,
+        allowNull: false,
+      },
+      updatedAt: {
+        type: Sequelize.DATE,
+        allowNull: false,
+      },
+    });
+  },
+
+  down: async (queryInterface) => {
+    await queryInterface.dropTable('movies');
+  },
+};"
+
+A seed também está errada:
+"'use strict';
+
+/** @type {import('sequelize-cli').Migration} */
+module.exports = {
+  up: async (queryInterface) => {
+    await queryInterface.bulkInsert('movies', [
+      {
+        title: 'Interestelar',
+        description: 'Exploradores viajam pelo espaço para salvar a humanidade.',
+        genre: 'Ficção científica',
+        releaseYear: 2014,
+        url_image: 'http://localhost:3001/images/interestelar.jpg',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        title: 'O Poderoso Chefão',
+        description: 'A história da família mafiosa Corleone e seu legado.',
+        genre: 'Crime/Drama',
+        releaseYear: 1972,
+        url_image: 'http://localhost:3001/images/o_poderoso_chefao.jpg',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        title: 'Matrix',
+        description: 'Um hacker descobre a verdade sobre a realidade e luta contra as máquinas.',
+        genre: 'Ficção científica',
+        releaseYear: 1999,
+        url_image: 'http://localhost:3001/images/matrix.jpg',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        title: 'Clube da Luta',
+        description: 'Um insatisfeito com a vida corporativa cria um clube secreto de lutas.',
+        genre: 'Drama/Psicológico',
+        releaseYear: 1999,
+        url_image: 'http://localhost:3001/images/clube_da_luta.jpg',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        title: 'Pulp Fiction',
+        description: 'Histórias interligadas de criminosos em Los Angeles.',
+        genre: 'Crime/Drama',
+        releaseYear: 1994,
+        url_image: 'http://localhost:3001/images/pulp_fiction.jpg',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ]);
+  },
+
+  down: async (queryInterface) => {
+    await queryInterface.bulkDelete('movies', null, {});
+  },
+};"
+
+Revise o que for necessário e me passe o comando para, se possível, descartarmos apenas o conteúdo do banco de movies para criar um novo correto.
+
++++
+Certo, e para finalizar vamos para a rota post de '/reviews'?
+
++++
+O service está assim:
+"const login = async (userData) => {
+  const { identifier, password } = userData;
+  logger.info('UserService', 'Tentativa de login', identifier);
+
+  const user = await checkUserExistsBy(identifier);
+  if (!user) {
+    logger.warn('UserService', 'Usuário não encontrado', identifier);
+    throw boom.notFound('User not found');
+  }
+
+  const isPasswordValid = await bcrypt.compare(password, user.password);
+  if (!isPasswordValid) {
+    logger.warn('UserService', 'Senha incorreta', identifier);
+    throw boom.unauthorized('Incorrect password');
+  }
+
+  const token = tokenValidator.generateToken(user);
+  logger.info('UserService', 'Login bem-sucedido', identifier);
+
+  return { token, id: user.id, email: user.email, username: user.username, role: user.role };
+};"
+
+Eu acho que é aqui que temos que mexer:
+"const tokenFunctions = {
+  generateToken: (user) => {
+    const signOptions = {
+      expiresIn: '24h',
+      algorithm: 'HS256',
+    };
+
+    const token = jwt.sign(
+      { id: user.id, email: user.email, username: user.username, role: user.role },
+      secret,
+      signOptions
+    );
+
+    logger.info('JWT', 'Token gerado para usuário', user.email);
+    return `Bearer ${token}`; // Adiciona o prefixo 'Bearer' automaticamente
+  },"
+
+
+
+
+
 
 
 

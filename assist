@@ -7,6 +7,33 @@ Então quero que me ajude a escolher o que podemos fazer algo apresentável e qu
 E então, o que me diz? Vamos primeiro discutir conceitualmente, antes de iniciarmos de fato o desnevolvimento. 
 
 +++
+1️⃣ Catálogo de Filmes e Séries (Estilo Netflix)
+
+📌 Pontos positivos:
+✅ Simples: 3 tabelas principais (users, movies, reviews).
+✅ Boa demonstração de CRUD e autenticação.
+✅ Fácil de expandir com extras, como favoritos ou recomendações.
+✅ Pode ter um frontend simples com listagem de filmes.
+
+📌 Tabelas:
+
+    Users (id, name, email, password, createdAt)
+    Movies (id, title, description, genre, releaseYear, createdAt)
+    Reviews (id, userId, movieId, rating, comment, createdAt)
+
+📌 Rotas:
+
+    POST /users (registro)
+    POST /login (autenticação JWT)
+    GET /movies (listar filmes)
+    POST /movies (adicionar filme - opcional)
+    POST /reviews (usuários adicionam reviews)
+
+📌 Extras possíveis:
+
+    Upload de imagem do filme.
+    Deploy fácil (ex: Vercel, Heroku).
+++++
 Eu acho a opção 1 boa. Passe os passos para iniciarmos o projeto (a pasta irá se chamar backend), sendo que iremos trabalhar com:
 - MYSQL, sequelize, Node, express, express async erros, nodemon, chai/sinon/mocha, hapi/boom, cors, joi, jwt, swagger - e mais alguma biblioteca que sugerir. 
 
@@ -25,7 +52,7 @@ Para amanhã:
     => Fazer Dockerfile do backend.
 [OK] - Revisar database.js/config.js
 [OK] - Revisar index.js e app.js
-[] - Rodar os comandos do sequelize para criar a estrutura do banco.
+[OK] - Rodar os comandos do sequelize para criar a estrutura do banco.
 
 
 ================================
@@ -42,9 +69,14 @@ Parei precisando criar seeds e testar o fluxo de register/login. Caso esteja tud
 ================================ 
 "predev": "npm run db:reset",
 
-[OK] - criar seeds e testar o fluxo de register/login.
-[OK] - copiar a pasta e colar em templates.
-[] - iniciar o git/primeiro commit.
+[OK] - Criar seeds e testar o fluxo de register/login.
+[OK] - Copiar a pasta e colar em templates.
+[OK] - Iniciar o git/primeiro commit.
+
++++
+npx sequelize-cli model:generate --name Movie --attributes title:string
+npx sequelize-cli model:generate --name Review --attributes comment:string
+
 
 
 
