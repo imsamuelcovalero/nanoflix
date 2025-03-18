@@ -77,6 +77,14 @@ Parei precisando criar seeds e testar o fluxo de register/login. Caso esteja tud
 npx sequelize-cli model:generate --name Movie --attributes title:string
 npx sequelize-cli model:generate --name Review --attributes comment:string
 
++++
+Parei trazendo a pasta de frontend com as configurações iniciais. Agora preciso planejar a execução dele com o ChatGPT.
+
+
+================================
+16/03
+================================ 
+Preciso ver a possibilidade de iniciar outro frontend, com Next.js
 
 
 
