@@ -23,7 +23,7 @@ E então, o que me diz? Vamos primeiro discutir conceitualmente, antes de inicia
 
 📌 Rotas:
 
-    POST /users (registro)
+    POST /register (registro)
     POST /login (autenticação JWT)
     GET /movies (listar filmes)
     POST /movies (adicionar filme - opcional)
@@ -82,9 +82,12 @@ Parei trazendo a pasta de frontend com as configurações iniciais. Agora precis
 
 
 ================================
-16/03
+17/03
 ================================ 
 Preciso ver a possibilidade de iniciar outro frontend, com Next.js
+
++++
+Parei precisando avaliar se faz sentido o conteúdo gerado pelo ChatGPT, avaliar a estrutura oferecida pelo backend, talvez no final dele e início da criação do front.
 
 
 
