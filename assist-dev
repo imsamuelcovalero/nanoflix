@@ -2768,6 +2768,272 @@ Great work! Send it to suporte@classist.com.br
 Eu estava pensando e vou propor uma mudança de pĺanos. Como praticamente não desenvolvemos nada ainda, acho que pode fazer mais sentido iniciar outra pasta frontend em Next.js, assim fica mais próximo do que eles usam na empresa. O que me diz? Em caso de concordar, pode planejar e dizer os passos que precisaremos tomar para isso? Eu acho uma boa possibilidade optarmos pela versão mais recente.
 
 
+================================
+18/03
+================================ 
+Certo, vamos voltar ao desenvolvimento? Estou testando a página de login e como pode ver na imagem anexa 1, ela está renderizando corretamente, porém está exibindo um issue, que se eu clico exibe:
+"Unhandled Runtime Error
+
+
+Error: crypto.randomUUID is not a function
+
+Call Stack
+3
+
+<unknown>
+chrome-extension://dmkamcknogkgcdfhhbddcghachkejeap/injectedScript.bundle.js (2:571975)
+<unknown>
+chrome-extension://dmkamcknogkgcdfhhbddcghachkejeap/injectedScript.bundle.js (2:597296)
+<unknown>
+chrome-extension://dmkamcknogkgcdfhhbddcghachkejeap/injectedScript.bundle.js (2:597300)
+" 
+
+O arquivo está assim:
+"// src/app/login/page.js
+"use client";
+
+import { useState } from "react";
+import { useAuthStore } from "@/store/authStore";
+import { Button } from "@/components/ui/button";
+
+export default function LoginPage() {
+  const login = useAuthStore((state) => state.login);
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    await login(identifier, password);
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen">
+      <h1 className="text-2xl font-bold mb-4">Login</h1>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <input
+          type="text"
+          placeholder="Email ou Username"
+          value={identifier}
+          onChange={(e) => setIdentifier(e.target.value)}
+          className="border p-2 rounded-md"
+        />
+        <input
+          type="password"
+          placeholder="Senha"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="border p-2 rounded-md"
+        />
+        <Button type="submit">Entrar</Button>
+      </form>
+    </div>
+  );
+}"
+
+E acho que pode fazer sentido utilizar mais componentes do shadcn, não? Mas primeiro vamos tentar resolver o erro exibido.
+
++++
+Ok, avançando no teste. Ele não exibe nada de informação no console mesmo? Veja o que rolou:
+" GET / 200 in 72ms
+ ✓ Compiled /login in 339ms (901 modules)
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET /login 200 in 473ms
+ GET /favicon.ico 200 in 214ms
+ GET /login 200 in 50ms
+ GET /favicon.ico 200 in 207ms
+ ✓ Compiled in 177ms (379 modules)
+ GET /login 200 in 14ms
+ ✓ Compiled in 84ms (379 modules)
+ GET /login 200 in 23ms
+ GET /favicon.ico 200 in 216ms
+ ✓ Compiled in 89ms (379 modules)
+ GET /login 200 in 13ms
+ GET /favicon.ico 200 in 205ms
+ ✓ Compiled in 268ms (923 modules)
+ GET /login 200 in 53ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 511ms (897 modules)
+ POST /undefined/login 404 in 635ms"
+
+Esses GETs de /favicon.ico aí não precisavam aparecer, agora os logs de erros seria bom. 
+
+É um pouco sofrível ter que ficar vendo as informações pelo navegador, como pode ver na imagem anexa 1. De qualquer forma, eu já vi que ele estava sem o conteúdo do .env. Porém eu criei a chave que você inseriu no código, veja o arquivo:
+"// src/store/authStore.js
+import { create } from "zustand";
+import axios from "axios";
+
+export const useAuthStore = create((set) => ({
+  user: null,
+  token: null,
+  isAuthenticated: false,
+
+  login: async (identifier, password) => {
+    try {
+      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/login`, { identifier, password });
+      set({ user: res.data, token: res.data.token, isAuthenticated: true });
+      localStorage.setItem("token", res.data.token);
+    } catch (error) {
+      console.error("Erro ao fazer login:", error.response?.data || error.message);
+    }
+  },
+
+  logout: () => {
+    set({ user: null, token: null, isAuthenticated: false });
+    localStorage.removeItem("token");
+  },
+
+  checkAuth: () => {
+    const storedToken = localStorage.getItem("token");
+    if (storedToken) {
+      set({ token: storedToken, isAuthenticated: true });
+    }
+  },
+}));"
+
+Criei um .env, que ficou assim:
+"#### API Url ####
+NEXT_PUBLIC_API_URL=http://localhost:3001"
+
+O backend está rodando localmente, veja:
+"samuel@holydesk-linux:/media/samuel/dados-linux13/testes-tecnicos/nanoflix/backend$ npm run dev
+
+> backend@1.0.0 dev
+> nodemon --watch "./src/**" src/server.js
+
+[nodemon] 3.1.9
+[nodemon] to restart at any time, enter `rs`
+[nodemon] watching path(s): src/**
+[nodemon] watching extensions: js,mjs,cjs,json
+[nodemon] starting `node src/server.js`
+[*App*]: ✅ FRONTEND_URL: http://localhost:3000
+[*Server*]: ✅ Server is running on http://localhost:3001
+"
+
+E o novo erro no navegador:
+"Console Error
+
+
+Erro ao fazer login: "Network Error"
+
+src/store/authStore.js (16:15) @ login
+
+
+  14 |       localStorage.setItem("token", res.data.token);
+  15 |     } catch (error) {
+> 16 |       console.error("Erro ao fazer login:", error.response?.data || error.message);
+     |               ^
+  17 |     }
+  18 |   },
+  19 |
+Call Stack
+5
+
+Show 3 ignore-listed frame(s)
+login
+src/store/authStore.js (16:15)
+async handleSubmit
+src/app/login/page.js (17:5)"
+
+O terminal do front:
+" ✓ Compiled in 101ms (909 modules)
+ GET /login 200 in 47ms
+ POST /login 200 in 99ms
+ POST /login 200 in 27ms
+   Reload env: .env
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 1784ms (913 modules)
+ POST /undefined/login 404 in 755ms
+ GET /login 200 in 87ms
+   Reload env: .env
+ ✓ Compiled in 1549ms (907 modules)
+ GET /login 200 in 75ms"
+
++++
+Ok, fiz a modificação de url e funcionou, veja o backend:
+"[*Validation*]: Validating loginSchema {"identifier":"teste@nanoflix.com","password":"Teste@123"}
+[*UserController*]: Tentativa de login 
+[*UserService*]: Tentativa de login teste@nanoflix.com
+[*UserService*]: Verificando existência de usuário teste@nanoflix.com
+Executing (default): SELECT `id`, `name`, `username`, `email`, `password`, `role`, `created_at` AS `createdAt`, `updated_at` AS `updatedAt` FROM `users` AS `User` WHERE (`User`.`username` = 'teste@nanoflix.com' OR `User`.`email` = 'teste@nanoflix.com') LIMIT 1;
+[*JWT*]: Token gerado para usuário teste@nanoflix.com
+[*UserService*]: Login bem-sucedido teste@nanoflix.com
+[*UserController*]: Login bem-sucedido "
+
+E na imagem anexa você pode ver o frontend, que inclusive adicionou corretamente o token ao localStorage, só que não foi pra página nenhuma né, ele deveria ter um redirect. 
+
+Veja se está de acordo com o conteúdo de authStore, e eu alterei o nome do token pra ficar mais específico:
+"export const useAuthStore = create((set) => ({
+  user: null,
+  token: null,
+  isAuthenticated: false,
+
+  login: async (identifier, password) => {
+    try {
+      console.log("API URL:", process.env.NEXT_PUBLIC_API_URL);
+      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/login`, { identifier, password });
+      set({ user: res.data, token: res.data.token, isAuthenticated: true });
+      localStorage.setItem("nanoflix-token", res.data.token);
+    } catch (error) {
+      console.error("Erro ao fazer login:", error.response?.data || error.message);
+    }
+  },
+
+  logout: () => {
+    set({ user: null, token: null, isAuthenticated: false });
+    localStorage.removeItem("nanoflix-token");
+  },
+
+  checkAuth: () => {
+    const storedToken = localStorage.getItem("token");
+    if (storedToken) {
+      set({ token: storedToken, isAuthenticated: true });
+    }
+  },
+}));"
+
+E você pode querer aprimorar a lógica de login, para direcionar para /movies em caso de sucesso, o que me diz?
+"// src/app/login/page.js
+"use client";
+
+import { useState } from "react";
+import { useAuthStore } from "@/store/authStore";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+export default function LoginPage() {
+  const login = useAuthStore((state) => state.login);
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    await login(identifier, password);
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen">
+      <h1 className="text-2xl font-bold mb-4">Login</h1>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <Label>Email ou Username</Label>
+        <Input
+          type="text"
+          placeholder="Digite seu email ou username"
+          value={identifier}
+          onChange={(e) => setIdentifier(e.target.value)}
+        />
+        <Label>Senha</Label>
+        <Input
+          type="password"
+          placeholder="Digite sua senha"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <Button type="submit" className="mt-2">Entrar</Button>
+      </form>
+    </div>
+  );
+}"
 
 
 

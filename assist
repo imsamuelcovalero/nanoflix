@@ -87,11 +87,22 @@ Parei trazendo a pasta de frontend com as configurações iniciais. Agora precis
 Preciso ver a possibilidade de iniciar outro frontend, com Next.js
 
 +++
-Parei precisando avaliar se faz sentido o conteúdo gerado pelo ChatGPT, avaliar a estrutura oferecida pelo backend, talvez no final dele e início da criação do front.
+Parei precisando avaliar se faz sentido o conteúdo gerado pelo ChatGPT, avaliar a estrutura oferecida pelo backend, talvez (no histórico de mensagens do ChatGPT) no final do desenvolvimento dele (backend) e início da criação do front.
 
 
+================================
+18/03
+================================ 
+Fala Leonardo, tudo bem contigo? Semana passada foi um pouco mais complicada do que o normal, mas meu trabalho é normalmente bem exaustivo mentalmente, é complicado de conseguir codar com qualidade de noite. E aí eu iniciei o teste na quarta, mas não me atentei o quanto deveria para o README, achei que era requisito utilizar Sequelize, só no final de semana que fui ver que poderia utilizar Mongoose, que eu já tinha um template pronto. O sequelize é mais chato de configurar e fazia bastante tempo que não o utilizava, isso atrasou bastante o desenvolvimento inicial. 
 
+Pude me concentrar melhor no teste no final de semana, e comecei o frontend em Next.js no domingo a noite, estou tentando finalizar o quanto antes mas como disse, durante a semana é mais difícil. Eu estou me esforçando para entregar o quanto antes e com a maior qualidade possível. Se puder contar com a compreensão de vocês, agradeço. 
 
++++
+teste@nanoflix.com
+Teste@123
+
++++
+Finalizei conseguindo visualizar a página de movies, agora o pŕoximo passo deve ser primeiro finalizar a revisão dela, junto com a estética e depois ver as demais rotas que precisam ser criadas. 
 
 
 

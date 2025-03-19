@@ -12,7 +12,7 @@ export default function RootLayout({ children }) {
   }, [checkAuth]);
 
   return (
-    <html lang="en">
+    <html suppressHydrationWarning lang="en">
       <body>{children}</body>
     </html>
   );

@@ -11,6 +11,8 @@ export default function MoviesPage() {
     async function fetchMovies() {
       try {
         const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/movies`);
+        console.log('moviesResponse', response);
+        
         setMovies(response.data);
       } catch (error) {
         console.error("Erro ao buscar filmes:", error.message);
