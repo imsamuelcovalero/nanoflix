@@ -105,6 +105,139 @@ Teste@123
 Finalizei conseguindo visualizar a página de movies, agora o pŕoximo passo deve ser primeiro finalizar a revisão dela, junto com a estética e depois ver as demais rotas que precisam ser criadas. 
 
 
+================================
+19/03
+================================ 
+🔹 3. Definição de Rotas e Páginas
+
+Aqui está um mapa inicial das rotas que precisaremos implementar:
+
+1️⃣ / → Página inicial com listagem de filmes.
+2️⃣ /login → Tela de login.
+3️⃣ /register → Tela de cadastro de usuário.
+4️⃣ /movies/:id → Página de detalhes do filme.
+5️⃣ /reviews → Página para que o usuário visualize e poste reviews.
+6️⃣ /admin → Página exclusiva para admins gerenciarem filmes.
+
+frontend/
+│── app/
+│   ├── layout.tsx        # Layout principal da aplicação
+│   ├── page.tsx          # Página inicial (listagem de filmes)
+│   ├── login/page.tsx    # Página de login
+│   ├── movies/
+│   │   ├── page.tsx      # Página de listagem de filmes
+│   │   ├── [id]/page.tsx # Detalhes do filme
+│   │   ├── review/page.tsx # Adicionar review
+
+
+3️⃣ Implementação das Funcionalidades
+
+✅ Autenticação JWT (Obrigatório)
+
+    Criar Contexto Global de autenticação (AuthProvider.tsx).
+    Armazenar token nos cookies (evitar localStorage por segurança).
+    Criar middleware de proteção de rotas (middleware.ts).
+
+✅ Listagem de Filmes
+
+    Criar /movies/ que busca dados do backend.
+    Exibir filmes em um grid responsivo com imagens.
+
+✅ Página de Detalhes
+
+    Criar /movies/[id]/ para mostrar detalhes do filme + reviews.
+    Requisição dinâmica ao backend para buscar detalhes.
+
+✅ Adicionar Review
+
+    Criar /movies/review/ para usuários logados postarem reviews.
+    Criar validação de formulário e envio via react-hook-form.
+
++++
+📌 Próximos Passos
+
+🔹 Criar a página de detalhes do filme (/movies/[id]).
+🔹 Criar formulário para adicionar reviews (/movies/review).
+🔹 Adicionar proteção de rotas (middleware.ts) para usuários logados.
+
+*************************
+=>*Login já está feita<=*
+=========================
+📍 Onde Estamos Agora?
+
+🔹 Já conseguimos buscar e exibir os filmes.
+🔹 Precisamos permitir que os usuários cliquem em um filme e vejam seus detalhes.
+🔹 Precisamos implementar login para diferenciar usuários logados (e permitir que postem reviews).
+🔹 Ainda não temos navegação fluida entre as páginas.
+📌 Próximos Passos
+🚀 1. Criar a Página de Detalhes do Filme (/movies/:id)
+
+📌 Objetivo:
+
+    Criar /movies/[id] para mostrar informações detalhadas do filme.
+    Exibir reviews já cadastrados.
+    Adicionar um botão para o usuário postar um review (se logado).
+
+📌 O que precisa ser feito?
+✅ Criar um novo arquivo movies/[id]/page.js.
+✅ Fazer uma requisição ao backend para obter detalhes do filme.
+✅ Exibir informações do filme (título, descrição, ano, gênero, etc.).
+✅ Mostrar os reviews enviados.
+✅ Criar um botão para adicionar um review (se o usuário estiver logado).
+🔑 2. Implementar Autenticação (Login e Registro)
+
+📌 Objetivo:
+
+    Criar fluxo de login e registro para diferenciar usuários logados.
+    Armazenar o token JWT em um cookie seguro.
+    Criar um contexto global para gerenciar autenticação.
+
+📌 O que precisa ser feito?
+✅ Criar a página /login com um formulário.
+✅ Criar a página /register para cadastro de usuários.
+✅ Criar AuthProvider.js para gerenciar estado global de autenticação.
+✅ Criar middleware para bloquear rotas para usuários não autenticados.
+✍️ 3. Criar o Formulário para Adicionar Review
+
+📌 Objetivo:
+
+    Permitir que usuários logados postem reviews nos filmes.
+    Criar um formulário validado.
+    Integrar com a API /reviews do backend.
+
+📌 O que precisa ser feito?
+✅ Criar um novo arquivo /movies/review/page.js.
+✅ Criar um formulário com react-hook-form.
+✅ Enviar os dados para /reviews no backend.
+✅ Atualizar a lista de reviews automaticamente ao adicionar um novo.
+🔄 4. Melhorar a Navegação e Estrutura Geral
+
+📌 Objetivo:
+
+    Adicionar links entre as páginas para facilitar a navegação.
+    Criar um layout.js para reutilizar cabeçalho e rodapé.
+    Proteger rotas que exigem login.
+
+📌 O que precisa ser feito?
+✅ Criar um <Header /> e um <Footer />.
+✅ Adicionar next/link nos filmes para navegar para /movies/[id].
+✅ Criar middleware (middleware.ts) para bloquear acesso a rotas privadas.
+📅 Resumo do Planejamento
+
+1️⃣ Criar /movies/[id] para exibir detalhes dos filmes.
+2️⃣ Criar login e registro para diferenciar usuários logados.
+3️⃣ Criar /movies/review/ para permitir reviews.
+4️⃣ Melhorar navegação e segurança das rotas.
+📌 Próximo Passo Agora
+
+Vamos começar pela página de detalhes do filme!
+📍 Criar /movies/[id] e exibir informações detalhadas + reviews.
+
+Isso faz sentido para você? 🚀
+
++++
+Finalizei precisando seguir os passos sugeridos. 
+
 
 
 
