@@ -1,13 +1,14 @@
 /* src/routes/movies.routes.js */
-const { Router } = require('express');
+const { Router } = require("express");
 
-const { getMovies, createMovie } = require('../controllers/moviesController');
-const { validateMovie } = require('../middlewares/validators');
-const { decode, authorize } = require('../middlewares/tokenFunctions');
+const { getMovies, getMovieById, createMovie } = require("../controllers/moviesController");
+const { validateMovie, validateMovieId } = require("../middlewares/validators");
+const { decode, authorize } = require("../middlewares/tokenFunctions");
 
 const router = Router();
 
-router.get('/', getMovies);
-router.post('/', decode, authorize(['admin']), validateMovie, createMovie);
+router.get("/", getMovies);
+router.get("/:movieId", validateMovieId, getMovieById);
+router.post("/", decode, authorize(["admin"]), validateMovie, createMovie);
 
 module.exports = router;

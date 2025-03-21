@@ -1,18 +1,25 @@
 /* src/middlewares/validators.js */
-const { loginSchema, registerSchema, checkUserSchema, movieSchema, reviewSchema } = require('./joiSchemas');
-const CustomError = require('../errors/CustomError');
-const logger = require('../utils/customLogger');
+const {
+  loginSchema,
+  registerSchema,
+  checkUserSchema,
+  movieSchema,
+  reviewSchema,
+  movieIdSchema,
+} = require("./joiSchemas");
+const CustomError = require("../errors/CustomError");
+const logger = require("../utils/customLogger");
 
 /**
  * Função auxiliar para extrair código de status e mensagem do erro do Joi.
  * Se o erro não seguir o padrão "STATUS|Mensagem", assume status 400.
  */
 const parseJoiError = (error) => {
-  if (!error.message.includes('|')) {
+  if (!error.message.includes("|")) {
     return { status: 400, message: error.message };
   }
 
-  const [status, message] = error.message.split('|');
+  const [status, message] = error.message.split("|");
   return {
     status: isNaN(status) ? 400 : Number(status),
     message,
@@ -24,16 +31,19 @@ const parseJoiError = (error) => {
  */
 function validate(schema, schemaName) {
   return (req, _res, next) => {
-    logger.debug('Validation', `Validating ${schemaName}`, JSON.stringify(req.body));
+    const isGetRequest = req.method === "GET";
+    const dataToValidate = isGetRequest ? req.params : req.body; // Seleciona dinamicamente
 
-    const { error } = schema.validate(req.body);
+    logger.debug("Validation", `Validating ${schemaName}`, JSON.stringify(dataToValidate));
+
+    const { error } = schema.validate(dataToValidate);
 
     if (error) {
       const { status, message } = parseJoiError(error);
 
-      logger.warn('ValidationError', `Validation failed: ${message}`, `Schema: ${schemaName}`);
+      logger.warn("ValidationError", `Validation failed: ${message}`, `Schema: ${schemaName}`);
 
-      throw new CustomError(status, message);
+      return next(new CustomError(status, message));
     }
 
     next();
@@ -41,11 +51,12 @@ function validate(schema, schemaName) {
 }
 
 const validators = {
-  validateLogin: validate(loginSchema, 'loginSchema'),
-  validateRegister: validate(registerSchema, 'registerSchema'),
-  validateCheckUserExists: validate(checkUserSchema, 'checkUserSchema'),
-  validateMovie: validate(movieSchema, 'movieSchema'),
-  validateReview: validate(reviewSchema, 'reviewSchema'),
+  validateLogin: validate(loginSchema, "loginSchema"),
+  validateRegister: validate(registerSchema, "registerSchema"),
+  validateCheckUserExists: validate(checkUserSchema, "checkUserSchema"),
+  validateMovie: validate(movieSchema, "movieSchema"),
+  validateMovieId: validate(movieIdSchema, "movieIdSchema"),
+  validateReview: validate(reviewSchema, "reviewSchema"),
 };
 
 module.exports = validators;

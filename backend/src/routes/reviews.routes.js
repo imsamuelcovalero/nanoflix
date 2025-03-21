@@ -1,12 +1,14 @@
 /* src/routes/reviews.routes.js */
-const { Router } = require('express');
+const { Router } = require("express");
 
-const { createReview } = require('../controllers/reviewsController');
-const { validateReview } = require('../middlewares/validators');
-const { decode } = require('../middlewares/tokenFunctions');
+const { decode } = require("../middlewares/tokenFunctions");
+const { validateReview, validateMovieId } = require("../middlewares/validators");
+const { createReview } = require("../controllers/reviewsController");
+const { getReviews } = require("../controllers/reviewsController");
 
 const router = Router();
 
-router.post('/', decode, validateReview, createReview);
+router.post("/", decode, validateReview, createReview);
+router.get("/:movieId", validateMovieId, getReviews);
 
 module.exports = router;

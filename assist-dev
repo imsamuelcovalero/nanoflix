@@ -3305,12 +3305,634 @@ frontend/
 🔹 Adicionar proteção de rotas (middleware.ts) para usuários logados."
 
 
+================================
+20/03
+================================ 
+Ok, me fale a diferença aqui entre explicit:
+""editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },"
+
+E o que você sugeriu, 
+
+ "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true
+  },
+
++++
+Ok, então estamos com 2 erros, em suas sugestões:
+1. "[{
+	"resource": "/home/samuel/.config/Code/User/settings.json",
+	"owner": "_generated_diagnostic_collection_name_#6",
+	"severity": 4,
+	"message": "Tipo incorreto. Esperava-se \"string\".",
+	"startLineNumber": 31,
+	"startColumn": 29,
+	"endLineNumber": 31,
+	"endColumn": 33
+}]"
+
+2. "Valor não aceito. Valores válidos: null, "formulahendry.auto-rename-tag", "ms-python.black-formatter", "ms-vscode.cmake-tools", "formulahendry.code-runner", "GitHub.copilot", "GitHub.copilot-chat", "ms-vscode.cpptools", "ms-vscode.cpptools-extension-pack", "PolymerMallard.css-alphabetize", "vscode.css-language-features", "golang.go", "NomicFoundation.hardhat-solidity", "vscode.html-language-features", "ms-python.isort", "vscode.json-language-features", "yzhang.markdown-all-in-one", "vscode.markdown-language-features", "vscode.markdown-math", "mongodb.mongodb-vscode", "Angular.ng-template", "vscode.php-language-features", "ms-python.python", "mechatroner.rainbow-csv", "ms-vscode-remote.remote-ssh-edit", "mtxr.sqltools", "vscode.typescript-language-features", "octref.vetur", "Vue.volar", "cweijan.vscode-database-client2", "ms-azuretools.vscode-docker", "DavidAnson.vscode-markdownlint", "ms-python.vscode-pylance", "styled-components.vscode-styled-components", "rangav.vscode-thunder-client", "steoates.autoimport", "ms-vscode.azure-repos", "twxs.cmake", "vscode.configuration-editing", "cweijan.dbclient-jdbc", "vscode.debug-auto-launch", "vscode.debug-server-ready", "ms-python.debugpy", "vscode.emmet", "usernamehw.errorlens", "dsznajder.es7-react-js-snippets", "vscode.extension-editing", "GrapeCity.gc-excelviewer", "vscode.git", "vscode.git-base", "vscode.github", "vscode.github-authentication", "eamodio.gitlens", "vscode.grunt", "vscode.gulp", "tal7aouy.icons", "VisualStudioExptTeam.intellicode-api-usage-examples", "vscode.ipynb", "vscode.jake", "ms-vscode.js-debug", "ms-vscode.js-debug-companion", "ms-toolsai.jupyter", "ms-toolsai.jupyter-renderers", "negokaz.live-server-preview", "ritwickdey.LiveServer", "bierner.markdown-preview-github-styles", "zhuangtongfa.material-theme", "vscode.media-preview", "vscode.merge-conflict", "vscode.microsoft-authentication", "vscode.npm", "vscode.references-view", "natqe.reload", "ms-vscode-remote.remote-containers", "ms-vscode.remote-explorer", "ms-vscode.remote-repositories", "ms-vscode-remote.remote-ssh", "ms-vscode-remote.remote-wsl", "GitHub.remotehub", "vscode.search-result", "vscode.simple-browser", "vscode.terminal-suggest", "fudd.toggle-zen-mode", "vscode.tunnel-forwarding", "vscode-icons-team.vscode-icons", "ms-vscode.vscode-js-profile-table", "ms-toolsai.vscode-jupyter-cell-tags", "ms-toolsai.vscode-jupyter-slideshow", "vadimcn.vscode-lldb", "ckolkman.vscode-postgres", "GitHub.vscode-pull-request-github", "bradlc.vscode-tailwindcss", "Shynet.vscode-taskkill", "VisualStudioExptTeam.vscodeintellicode", "ms-vsliveshare.vsliveshare"."
+
+No início e no final deste trecho (linhas 31 e 47, como pode ver na imagem anexa 1):
+" "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true
+  },
+
+  // 🔹 Especifica as linguagens onde o ESLint será aplicado
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact"
+  ],
+  "tabnine.experimentalAutoImports": true,
+  "files.autoSave": "onFocusChange",
+  "editor.tabSize": 2,
+  "editor.inlineSuggest.enabled": true,
+
+  // 🔹 Garante que o Prettier seja usado como formatador padrão
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true,"
+
+Além disso, como também pode ver na imagem anexa 1, exite trecho de código em cor diferente, parecendo não estar ativa.
+
+Eu não quero bagunçar todo o VSCode, então tenha cuidado aqui, por favor. Eu já tive problemas com o Prettier anteriormente.
+
+++++
+Certo, parece estar funcionando agora. Também testei nosso link no card e parece estar direcionando corretamente para a página de details, como pode ver na imagem anexa 1. Agora o próximo passo é implementar a paǵina no código. Na imagem anexa 2, você pode ver a estrutura atual de pastas. E o código de /movies, para se basear no padrão que ficou é esse:
+"// src/app/movies/page.js
+"use client";
+
+import { useEffect, useState } from "react";
+import axios from "axios";
+import { Card, CardContent } from "@/components/ui/card";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
+import { TypographyH1, TypographyH4 } from "@/components/ui/typography";
+import Link from "next/link";
+
+export default function MoviesPage() {
+  const [movies, setMovies] = useState([]);
+
+  useEffect(() => {
+    async function fetchMovies() {
+      try {
+        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/movies`);
+        console.log("moviesResponse", response);
+        setMovies(response.data);
+      } catch (error) {
+        console.error("Erro ao buscar filmes:", error.message);
+      }
+    }
+
+    fetchMovies();
+  }, []);
+
+  return (
+    <div className="container mx-auto p-6 flex flex-col items-center">
+      {/* Título centralizado corretamente com maior espaçamento */}
+      <TypographyH1 className="text-4xl font-bold text-center w-full">Filmes</TypographyH1>
+
+      {/* Ajuste o espaçamento com mt-8 no grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 mt-12">
+        {movies.map((movie) => (
+          <Link key={movie.id} href={`/movies/${movie.id}`} passHref className="cursor-pointer">
+            <Card className="shadow-md transition-transform duration-200 hover:scale-105 flex flex-col min-h-[260px] min-w-[220px] max-h-[360px] mx-auto">
+              <CardContent className="p-4 flex flex-col h-full justify-between items-center">
+                {/* Reduzindo um pouco a altura máxima da imagem */}
+                <AspectRatio ratio={2 / 3} className="w-full max-h-[260px]">
+                  <img
+                    src={movie.url_image}
+                    alt={movie.title}
+                    className="w-full h-full object-cover rounded-md"
+                  />
+                </AspectRatio>
+
+                {/* Ajuste do título para alinhar no centro do card */}
+                <TypographyH4 className="text-md font-medium mt-4 text-center w-full">
+                  {movie.title}
+                </TypographyH4>
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}"
+
+Lembrando que temos o shadcn a disposição, que deve ser usado ao máximo possível, se quiser pode criar novos componentes que for utilizar.
+
++++
+Ficou muito grande a mensagem anterior por conta dos erros, vou reenviá-la. 
+Ok, tivemos alguns erros, veja na imagem anexa 1. O código está assim:
+"// src/app/movies/[id]/page.js
+"use client";
+
+import { useEffect, useState } from "react";
+import axios from "axios";
+import { useRouter } from "next/navigation";
+import { Card, CardContent } from "@/components/ui/card";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
+import { TypographyH1, TypographyH4, TypographyP } from "@/components/ui/typography";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
+export default function MovieDetailsPage({ params }) {
+  const { id } = params;
+  const router = useRouter();
+  const [movie, setMovie] = useState(null);
+  const [reviews, setReviews] = useState([]);
+  const [newReview, setNewReview] = useState("");
+
+  useEffect(() => {
+    async function fetchMovie() {
+      try {
+        const response = await axios.get(${process.env.NEXT_PUBLIC_API_URL}/movies/${id});
+        setMovie(response.data);
+      } catch (error) {
+        console.error("Erro ao buscar detalhes do filme:", error.message);
+        router.push("/movies"); // Redireciona caso o filme não exista
+      }
+    }
+
+    async function fetchReviews() {
+      try {
+        const response = await axios.get(
+          ${process.env.NEXT_PUBLIC_API_URL}/reviews?movieId=${id}
+        );
+        setReviews(response.data);
+      } catch (error) {
+        console.error("Erro ao buscar reviews:", error.message);
+      }
+    }
+
+    fetchMovie();
+    fetchReviews();
+  }, [id]);
+
+  async function handleReviewSubmit() {
+    if (!newReview.trim()) return;
+
+    try {
+      await axios.post(${process.env.NEXT_PUBLIC_API_URL}/reviews, {
+        movieId: id,
+        content: newReview,
+      });
+      setNewReview("");
+      fetchReviews(); // Atualiza os reviews após o envio
+    } catch (error) {
+      console.error("Erro ao enviar review:", error.message);
+    }
+  }
+
+  if (!movie) return <p className="text-center mt-6">Carregando...</p>;
+
+  return (
+    <div className="container mx-auto p-6 flex flex-col items-center">
+      <TypographyH1 className="text-4xl font-bold text-center w-full">{movie.title}</TypographyH1>
+
+      <Card className="shadow-md transition-transform duration-200 flex flex-col min-w-[300px] max-w-[500px] mx-auto mt-6">
+        <CardContent className="p-4 flex flex-col h-full justify-between items-center">
+          <AspectRatio ratio={2 / 3} className="w-full">
+            <img
+              src={movie.url_image}
+              alt={movie.title}
+              className="w-full h-full object-cover rounded-md"
+            />
+          </AspectRatio>
+          <TypographyP className="mt-4 text-center">{movie.description}</TypographyP>
+        </CardContent>
+      </Card>
+
+      <div className="w-full max-w-[500px] mt-8">
+        <TypographyH4 className="text-lg font-semibold text-center">Reviews</TypographyH4>
+        {reviews.length > 0 ? (
+          <ul className="mt-4 space-y-2">
+            {reviews.map((review, index) => (
+              <li key={index} className="border p-3 rounded-md shadow-sm">
+                {review.content}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-center mt-2 text-gray-500">Nenhum review ainda.</p>
+        )}
+
+        <div className="mt-4 flex flex-col items-center">
+          <Input
+            className="w-full max-w-[400px] mb-2"
+            placeholder="Escreva um review..."
+            value={newReview}
+            onChange={(e) => setNewReview(e.target.value)}
+          />
+          <Button onClick={handleReviewSubmit}>Enviar Review</Button>
+        </div>
+      </div>
+    </div>
+  );
+}"
+
+Além disso estou enviando uma imagem anexa 2 com a estrutura do banco, e essa é a rota /reviews do backend:
+"/* src/routes/reviews.routes.js */
+const { Router } = require('express');
+
+const { createReview } = require('../controllers/reviewsController');
+const { validateReview } = require('../middlewares/validators');
+const { decode } = require('../middlewares/tokenFunctions');
+
+const router = Router();
+
+router.post('/', decode, validateReview, createReview);
+
+module.exports = router;"
+
+Controller:
+"/* src/controllers/reviewsController.js */
+const reviewsService = require('../services/reviewsService');
+const logger = require('../utils/customLogger');
+
+const reviewsController = {
+  createReview: async (req, res, next) => {
+    try {
+      const { id: userId } = req.user;
+      logger.info('ReviewsController', 'Usuário enviando review', userId);
+
+      const review = await reviewsService.createReview({ ...req.body, userId });
+      logger.info('ReviewsController', 'Review criada com sucesso', review.id);
+
+      const { id, movie_id, user_id, rating, comment } = review;
+      return res.status(201).json({ id, movie_id, user_id, rating, comment });
+    } catch (err) {
+      logger.error('ReviewsController', 'Erro ao criar review', err.message);
+      next(err);
+    }
+  },
+};
+
+module.exports = reviewsController;"
+
+Nós só temos uma rota post para enviar o review, não temos uma para receber o review do filme clicado, que acho que é necessária para funcionar nossa rota de detalhes no front.
+
+Veja a service também, caso já vá  criar a rota do backend:
+"/* src/services/reviewsService.js */
+const { Review, Movie } = require('../database/models');
+const logger = require('../utils/customLogger');
+const boom = require('@hapi/boom');
+
+const createReview = async ({ movie_id, rating, comment, userId }) => {
+  logger.info('ReviewsService', 'Criando review para filme', movie_id);
+
+  const movie = await Movie.findByPk(movie_id);
+  if (!movie) {
+    logger.warn('ReviewsService', 'Filme não encontrado', movie_id);
+    throw boom.notFound('Movie not found');
+  }
+
+  const review = await Review.create({ movie_id, user_id: userId, rating, comment });
+
+  logger.info('ReviewsService', 'Review criada com sucesso', review.id);
+  return review;
+};
+
+module.exports = { createReview };"
+
++++
+Ok, vamos com calma. Voltando ao nosso padrão do backend, temos o arquivo da rota:
+"/* src/routes/reviews.routes.js */
+const { Router } = require("express");
+
+const { createReview } = require("../controllers/reviewsController");
+const { validateReview } = require("../middlewares/validators");
+const { decode } = require("../middlewares/tokenFunctions");
+const { getReviews } = require("../controllers/reviewsController");
+
+const router = Router();
+
+router.post("/", decode, validateReview, createReview);
+router.get("/:movieId", getReviews);
+
+module.exports = router;"
+
+Eu comecei a adicionaro o código, preciso que você revise/corrija se necessário e acrescente o que estiver faltando. 
+
+Talevz vamos precisar de um schema do joi, veja o da post:
+"const reviewSchema = joi.object({
+  movie_id: joi.number().integer().required().messages({
+    'number.base': errorMessages.movieIdInvalid,
+    'any.required': errorMessages.movieIdRequired,
+  }),
+  rating: joi.number().integer().min(1).max(5).required().messages({
+    'number.base': errorMessages.ratingRequired,
+    'number.min': errorMessages.ratingMin,
+    'number.max': errorMessages.ratingMax,
+    'any.required': errorMessages.ratingRequired,
+  }),
+  comment: joi.string().optional().allow('').messages({
+    'string.base': errorMessages.commentInvalid,
+  }),
+});"
+
+eu não sei se esse da get precisa de validação.
+
++++
+Ok, agora na mesma linha precisamos implementar a rota no backend que permite pegar informações de um único filme, que o front tenta acessar aqui:
+" async function fetchMovie() {
+      try {
+        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/movies/${id}`);
+        setMovie(response.data);
+      } catch (error) {
+        console.error("Erro ao buscar detalhes do filme:", error.message);
+        router.push("/movies"); // Redireciona caso o filme não exista
+      }
+    }"
+
+Talvez uma forma mais rápida e prática seja trabalhar em cima do arrayd e filmes que já foi recebido na /movies, veja:
+"moviesResponse 
+{data: Array(5), status: 200, statusText: 'OK', headers: AxiosHeaders, config: {…}, …}
+config
+: 
+{transitional: {…}, adapter: Array(3), transformRequest: Array(1), transformResponse: Array(1), timeout: 0, …}
+data
+: 
+Array(5)
+0
+: 
+{id: 1, title: 'Interestelar', description: 'Exploradores viajam pelo espaço para salvar a humanidade.', genre: 'Ficção científica', release_year: 2014, …}
+1
+: 
+{id: 2, title: 'O Poderoso Chefão', description: 'A história da família mafiosa Corleone e seu legado.', genre: 'Crime/Drama', release_year: 1972, …}
+2
+: 
+{id: 3, title: 'Matrix', description: 'Um hacker descobre a verdade sobre a realidade e luta contra as máquinas.', genre: 'Ficção científica', release_year: 1999, …}
+3
+: 
+{id: 4, title: 'Clube da Luta', description: 'Um insatisfeito com a vida corporativa cria um clube secreto de lutas.', genre: 'Drama/Psicológico', release_year: 1999, …}
+4
+: 
+{id: 5, title: 'Pulp Fiction', description: 'Histórias interligadas de criminosos em Los Angeles.', genre: 'Crime/Drama', release_year: 1994, …}
+length
+: 
+5
+[[Prototype]]
+: 
+Array(0)
+headers
+: 
+AxiosHeaders {content-length: '1091', content-type: 'application/json; charset=utf-8'}
+request
+: 
+XMLHttpRequest {onreadystatechange: null, readyState: 4, timeout: 0, withCredentials: false, upload: XMLHttpRequestUpload, …}
+status
+: 
+200
+statusText
+: 
+"OK""
+
+Se salvarmos isso em um estado global, podemos acessar em otras rotas, acho que até otimiza a velocidade do site, já que economiza uma nova request ao banco. O que me diz?
+
+Atualmente só temos um estado, que usamos para a autenticação:
+"// src/store/authStore.js
+"use client";
+
+import { create } from "zustand";
+import axios from "axios";
+
+export const useAuthStore = create((set) => ({
+  user: null,
+  token: null,
+  isAuthenticated: false,
+
+  login: async (identifier, password) => {
+    try {
+      console.log("API URL:", process.env.NEXT_PUBLIC_API_URL);
+      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/login`, { identifier, password });
+
+      set({ user: res.data, token: res.data.token, isAuthenticated: true });
+      localStorage.setItem("nanoflix-token", res.data.token);
+
+      return true; // Indica que o login foi bem-sucedido
+    } catch (error) {
+      console.error("Erro ao fazer login:", error.response?.data || error.message);
+      return false; // Indica falha no login
+    }
+  },
+
+  logout: () => {
+    set({ user: null, token: null, isAuthenticated: false });
+    localStorage.removeItem("nanoflix-token");
+  },
+
+  checkAuth: () => {
+    const storedToken = localStorage.getItem("nanoflix-token");
+    if (storedToken) {
+      set({ token: storedToken, isAuthenticated: true });
+    }
+  },
+}));"
+
++++
+Certo, acho que só faltou enviarmos para o novo estado agora os dados quando chegam, na /movies:
+"// src/app/movies/page.js
+"use client";
+
+import { useEffect, useState } from "react";
+import axios from "axios";
+import { Card, CardContent } from "@/components/ui/card";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
+import { TypographyH1, TypographyH4 } from "@/components/ui/typography";
+import Link from "next/link";
+
+export default function MoviesPage() {
+  const [movies, setMovies] = useState([]);
+
+  useEffect(() => {
+    async function fetchMovies() {
+      try {
+        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/movies`);
+        console.log("moviesResponse", response);
+        setMovies(response.data);
+      } catch (error) {
+        console.error("Erro ao buscar filmes:", error.message);
+      }
+    }
+
+    fetchMovies();
+  }, []);"
+
++++
+Ok, ainda tem alguma coisa errada, estamos tomando 404 ao buscar os reviews, e o backend não parece estar recebendo a requisição, veja o erro:
+"Console Error
 
 
+Erro ao buscar reviews: "Request failed with status code 404"
+
+src/app/movies/[id]/page.js (47:17) @ fetchReviews1
 
 
+  45 |         setReviews(response.data);
+  46 |       } catch (error) {
+> 47 |         console.error("Erro ao buscar reviews:", error.message);
+     |                 ^
+  48 |       }
+  49 |     }
+  50 |
+Call Stack
+4
+
+Show 3 ignore-listed frame(s)
+fetchReviews1
+src/app/movies/[id]/page.js (47:17)"
+
+E o código:
+"async function fetchReviews() {
+      try {
+        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/reviews?${id}`);
+        setReviews(response.data);
+      } catch (error) {
+        console.error("Erro ao buscar reviews:", error.message);
+      }
+    }"
 
 
+E a rota do backend:
+"/* src/routes/reviews.routes.js */
+const { Router } = require("express");
+
+const { decode } = require("../middlewares/tokenFunctions");
+const { validateReview, validateMovieId } = require("../middlewares/validators");
+const { createReview } = require("../controllers/reviewsController");
+const { getReviews } = require("../controllers/reviewsController");
+
+const router = Router();
+
+router.post("/", decode, validateReview, createReview);
+router.get("/:movieId", validateMovieId, getReviews);
+
+module.exports = router;"
+
+Qualquer coisa pode sugerir um conteúdo para simularmos no insomnia, aí vemos aonde está o erro, se não estiver identificando de cara.
+
++++
+Certo, agora corrigimos a rota e estamos recebendo os reviews, como pode ver na imagem anexa 1, mas eles não está sendo exibidos, como pode ver na imagem anexa 2. Quer revisar o código do front?
+"// src/app/movies/[id]/page.js
+"use client";
+
+import { useEffect, useState } from "react";
+import axios from "axios";
+import { useMoviesStore } from "@/store/moviesStore";
+import { useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
+import { Card, CardContent } from "@/components/ui/card";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
+import { TypographyH1, TypographyH4, TypographyP } from "@/components/ui/typography";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
+export default function MovieDetailsPage() {
+  const params = useParams();
+  const id = params?.id;
+  const router = useRouter();
+  const [movie, setMovie] = useState(null);
+  const [reviews, setReviews] = useState([]);
+  const [newReview, setNewReview] = useState("");
+
+  const { getMovieById, fetchMovies, isLoaded } = useMoviesStore();
+
+  useEffect(() => {
+    async function fetchMovieDetails() {
+      let movieData = getMovieById(id);
+
+      if (!movieData && !isLoaded) {
+        await fetchMovies();
+        movieData = getMovieById(id);
+      }
+
+      if (movieData) {
+        setMovie(movieData);
+      } else {
+        console.error("Filme não encontrado");
+        router.push("/movies");
+      }
+    }
+
+    async function fetchReviews() {
+      try {
+        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/reviews/${id}`);
+        console.log("reviewsResponse", response);
+
+        setReviews(response.data);
+      } catch (error) {
+        console.error("Erro ao buscar reviews:", error.message);
+      }
+    }
+
+    fetchMovieDetails();
+    fetchReviews();
+  }, [id]);
+
+  async function handleReviewSubmit() {
+    if (!newReview.trim()) return;
+
+    try {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/reviews`, {
+        movieId: id,
+        content: newReview,
+      });
+      setNewReview("");
+      fetchReviews(); // Atualiza os reviews após o envio
+    } catch (error) {
+      console.error("Erro ao enviar review:", error.message);
+    }
+  }
+
+  if (!movie) return <p className="text-center mt-6">Carregando...</p>;
+
+  return (
+    <div className="container mx-auto p-6 flex flex-col items-center">
+      <TypographyH1 className="text-4xl font-bold text-center w-full">{movie.title}</TypographyH1>
+
+      <Card className="shadow-md transition-transform duration-200 flex flex-col min-w-[300px] max-w-[500px] mx-auto mt-6">
+        <CardContent className="p-4 flex flex-col h-full justify-between items-center">
+          <AspectRatio ratio={2 / 3} className="w-full">
+            <img
+              src={movie.url_image}
+              alt={movie.title}
+              className="w-full h-full object-cover rounded-md"
+            />
+          </AspectRatio>
+          <TypographyP className="mt-4 text-center">{movie.description}</TypographyP>
+        </CardContent>
+      </Card>
+
+      <div className="w-full max-w-[500px] mt-8">
+        <TypographyH4 className="text-lg font-semibold text-center">Reviews</TypographyH4>
+        {reviews.length > 0 ? (
+          <ul className="mt-4 space-y-2">
+            {reviews.map((review, index) => (
+              <li key={index} className="border p-3 rounded-md shadow-sm">
+                {review.content}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-center mt-2 text-gray-500">Nenhum review ainda.</p>
+        )}
+
+        <div className="mt-4 flex flex-col items-center">
+          <Input
+            className="w-full max-w-[400px] mb-2"
+            placeholder="Escreva um review..."
+            value={newReview}
+            onChange={(e) => setNewReview(e.target.value)}
+          />
+          <Button onClick={handleReviewSubmit}>Enviar Review</Button>
+        </div>
+      </div>
+    </div>
+  );
+}"
 
 
 
