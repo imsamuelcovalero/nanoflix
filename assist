@@ -170,7 +170,7 @@ frontend/
 🔹 Precisamos implementar login para diferenciar usuários logados (e permitir que postem reviews).
 🔹 Ainda não temos navegação fluida entre as páginas.
 📌 Próximos Passos
-🚀 1. Criar a Página de Detalhes do Filme (/movies/:id)
+[OK] - 🚀 1. Criar a Página de Detalhes do Filme (/movies/:id)
 
 📌 Objetivo:
 
@@ -184,7 +184,9 @@ frontend/
 ✅ Exibir informações do filme (título, descrição, ano, gênero, etc.).
 ✅ Mostrar os reviews enviados.
 ✅ Criar um botão para adicionar um review (se o usuário estiver logado).
-🔑 2. Implementar Autenticação (Login e Registro)
+
+++++
+[OK] - 🔑 2. Implementar Autenticação (Login e Registro)
 
 📌 Objetivo:
 
@@ -197,7 +199,9 @@ frontend/
 ✅ Criar a página /register para cadastro de usuários.
 ✅ Criar AuthProvider.js para gerenciar estado global de autenticação.
 ✅ Criar middleware para bloquear rotas para usuários não autenticados.
-✍️ 3. Criar o Formulário para Adicionar Review
+
+++++
+[OK] - ✍️ 3. Criar o Formulário para Adicionar Review
 
 📌 Objetivo:
 
@@ -210,7 +214,9 @@ frontend/
 ✅ Criar um formulário com react-hook-form.
 ✅ Enviar os dados para /reviews no backend.
 ✅ Atualizar a lista de reviews automaticamente ao adicionar um novo.
-🔄 4. Melhorar a Navegação e Estrutura Geral
+
+++++
+[ ] - 🔄 4. Melhorar a Navegação e Estrutura Geral
 
 📌 Objetivo:
 
@@ -222,6 +228,8 @@ frontend/
 ✅ Criar um <Header /> e um <Footer />.
 ✅ Adicionar next/link nos filmes para navegar para /movies/[id].
 ✅ Criar middleware (middleware.ts) para bloquear acesso a rotas privadas.
+
+++++
 📅 Resumo do Planejamento
 
 1️⃣ Criar /movies/[id] para exibir detalhes dos filmes.
@@ -248,15 +256,61 @@ Finalizei conseguindo exibir as informações na página de detalhes, agora o pr
 ================================
 21/03
 ================================ 
-[] - Armazenar também os reviews no estado, evitando mais requisições ao backend. Talvez associar com o objeto do movie referente?
+MF = Melhoria Futura
+[MF] - Armazenar também os reviews no estado, evitando mais requisições ao backend. Talvez associar com o objeto do movie referente?
+    => Melhoria futura, se sobrar tempo.
 [] - Se der tempo, fazer header exibindo o nome do usuário, quando logado e footer. 
 
 Finalizei resolvendo a estilização de details, adicionando a lógica do rating e fixando o backend necessário, agora o usuário logado consegue enviar o review. Agora preciso ver a tela de register, a página de admin e a lógica de verificação/segurança. 
 
-Melhora a estilização geral da página de detalhes, aprimora a interação com a página de login quando tentar enviar um review sem estar logado; Aprimora o backend nos pontos que foram necessários para a rota de adição de reviews funcionar corretamente. 
 
+================================
+22/03
+================================ 
+mkdir -p src/app/register
+touch src/app/register/page.js
 
++++
+teste@nanoflix.com
+Teste@123
 
+usertest
+A1234567
+
+admin
+Admin@123
+
+++++
+- Criar middleware de proteção de rotas (próximo passo)
+- Criar AuthProvider (opcional, se quiser migrar de zustand para context, mas pode manter zustand como já está)
+
+- Se quiser, podemos agora implementar a AuthProvider com persistência via cookie ou localStorage e também o middleware para bloquear rotas privadas. Deseja seguir com isso agora?
+
+- Deseja seguir agora para o AuthProvider e middleware de proteção de rotas?
+
+- Implementar o AuthProvider global para gerenciamento do usuário via context (com persistência e reatividade),
+Criar o middleware que bloqueia rotas protegidas.
+
++++
+[OK] - Mensagem para o usuário explicando que precisa estar logado para enviar o review, antes ou depois de ser direcionado para a pela de login.
+
+```Se quiser deixar a rota /unauthorized como fallback para acessos sem motivo, você pode criar dois arquivos:
+
+    src/app/unauthorized/page.js → genérico
+    src/app/unauthorized/[reason]/page.js → customizável
+
+Assim:
+
+src/
+└── app/
+    └── unauthorized/
+        ├── [reason]/
+        │   └── page.js       <-- para mensagens com motivo
+        └── page.js           <-- fallback padrão```
+
+[OK] - Resolver o erro da linha 102 de movies/id
+
+[] - Testar rota de admin(movies/new)
 
 
 

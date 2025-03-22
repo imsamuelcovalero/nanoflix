@@ -4709,6 +4709,2253 @@ MovieDetailsPage
 src/app/movies/[id]/page.js (147:26)"
 
 
+================================
+22/03
+================================ 
+Ok, vamos revisar então os pontos do planejamento relacionados com o que trabalhamos recentemente, são eles:
+"[OK] - 🚀 1. Criar a Página de Detalhes do Filme (/movies/:id)
+
+📌 Objetivo:
+
+    Criar /movies/[id] para mostrar informações detalhadas do filme.
+    Exibir reviews já cadastrados.
+    Adicionar um botão para o usuário postar um review (se logado).
+
+📌 O que precisa ser feito?
+✅ Criar um novo arquivo movies/[id]/page.js.
+✅ Fazer uma requisição ao backend para obter detalhes do filme.
+✅ Exibir informações do filme (título, descrição, ano, gênero, etc.).
+✅ Mostrar os reviews enviados.
+✅ Criar um botão para adicionar um review (se o usuário estiver logado).
+
+[ ] - ✍️ 3. Criar o Formulário para Adicionar Review
+
+📌 Objetivo:
+
+    Permitir que usuários logados postem reviews nos filmes.
+    Criar um formulário validado.
+    Integrar com a API /reviews do backend.
+
+📌 O que precisa ser feito?
+✅ Criar um novo arquivo /movies/review/page.js.
+✅ Criar um formulário com react-hook-form.
+✅ Enviar os dados para /reviews no backend.
+✅ Atualizar a lista de reviews automaticamente ao adicionar um novo."
+
+Pela minha análise está tudo correto agora, apenas não sei se criamos um formulário com 'react-hook-form' e a necessidade dele, caso não o tenhamos feito. Seria para validar a entrada de dados?
+
+Nossa page está assim:
+"// src/app/movies/[id]/page.js
+"use client";
+
+import { useEffect, useState } from "react";
+import axios from "axios";
+import { useMoviesStore } from "@/store/moviesStore";
+import { useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
+import { Card, CardContent } from "@/components/ui/card";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
+import { TypographyH1, TypographyH4, TypographyP } from "@/components/ui/typography";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useAuthStore } from "@/store/authStore";
+import StarRating from "@/components/ui/StarRating";
+import { Star } from "lucide-react";
+
+export default function MovieDetailsPage() {
+  const params = useParams();
+  const id = params?.id;
+  const router = useRouter();
+  const [movie, setMovie] = useState(null);
+  const [reviews, setReviews] = useState([]);
+  const [newReview, setNewReview] = useState("");
+  const [rating, setRating] = useState(0); // Inicialmente, 5 estrelas
+
+  const { getMovieById, fetchMovies, isLoaded } = useMoviesStore();
+  const { isAuthenticated, token } = useAuthStore();
+
+  useEffect(() => {
+    const savedReview = localStorage.getItem("pendingReview");
+    const savedRating = localStorage.getItem("pendingRating");
+
+    if (savedReview) {
+      setNewReview(savedReview);
+    }
+
+    if (savedRating) {
+      setRating(Number(savedRating)); // Converte string para número
+    }
+  }, []);
+
+  useEffect(() => {
+    async function fetchMovieDetails() {
+      let movieData = getMovieById(id);
+
+      if (!movieData && !isLoaded) {
+        await fetchMovies();
+        movieData = getMovieById(id);
+      }
+
+      if (movieData) {
+        setMovie(movieData);
+      } else {
+        console.error("Filme não encontrado");
+        router.push("/movies");
+      }
+    }
+
+    async function fetchReviews() {
+      try {
+        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/reviews/${id}`);
+        console.log("reviewsResponse", response);
+
+        setReviews(response.data);
+      } catch (error) {
+        console.error("Erro ao buscar reviews:", error.message);
+      }
+    }
+
+    fetchMovieDetails();
+    fetchReviews();
+  }, [id]);
+
+  async function handleReviewSubmit() {
+    if (!newReview.trim() || rating === 0) {
+      alert("Por favor, escreva um review e selecione uma nota.");
+      return;
+    }
+
+    if (!isAuthenticated) {
+      // Salva o review e redireciona para login
+      console.log("Usuário não autenticado. Salvando review para envio após login...");
+
+      localStorage.setItem("pendingReview", newReview);
+      localStorage.setItem("pendingRating", rating);
+      localStorage.setItem("redirectAfterLogin", `/movies/${id}`);
+      router.push("/login");
+      return;
+    }
+
+    try {
+      await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}/reviews`,
+        { movieId: id, comment: newReview, rating },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setNewReview("");
+      localStorage.removeItem("pendingReview");
+      localStorage.removeItem("pendingRating");
+      fetchReviews();
+    } catch (error) {
+      console.error("Erro ao enviar review:", error.message);
+    }
+  }
+
+  if (!movie) return <p className="text-center mt-6">Carregando...</p>;
+
+  return (
+    <div className="container mx-auto p-6 flex flex-col lg:flex-row items-center justify-center min-h-screen">
+      {/* Card do filme */}
+      <Card className="shadow-md transition-transform duration-200 flex flex-col w-full max-w-md lg:max-w-xs lg:mr-8">
+        <CardContent className="p-4 flex flex-col h-full justify-between items-center">
+          <AspectRatio ratio={2 / 3} className="w-full">
+            <img
+              src={movie.url_image}
+              alt={movie.title}
+              className="w-full h-full object-cover rounded-md"
+            />
+          </AspectRatio>
+          <TypographyH1 className="text-2xl font-bold text-center mt-4">{movie.title}</TypographyH1>
+          <TypographyP className="mt-4 text-center">{movie.description}</TypographyP>
+        </CardContent>
+      </Card>
+
+      {/* Seção de reviews */}
+      <div className="w-full max-w-lg lg:flex-1 flex flex-col items-center text-center">
+        <TypographyH4 className="text-lg font-semibold">Reviews</TypographyH4>
+        {reviews.length > 0 ? (
+          <ul className="mt-4 space-y-2 w-full max-w-[500px]">
+            {reviews.map((review, index) => (
+              <li key={index} className="border p-3 rounded-md shadow-sm bg-white flex flex-col">
+                <StarRating rating={review.rating} /> {/* Exibe as estrelas */}
+                <p className="mt-2">{review.comment}</p>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-center mt-2 text-gray-500">Nenhum review ainda.</p>
+        )}
+
+        {/* Formulário de review */}
+        <div className="mt-4 flex flex-col items-center w-full max-w-[500px]">
+          <Input
+            className="w-full mb-2"
+            placeholder="Escreva um review..."
+            value={newReview}
+            onChange={(e) => setNewReview(e.target.value)}
+          />
+
+          {/* Seletor de nota */}
+          <div className="flex items-center mb-4">
+            <span className="mr-2">Nota:</span>
+            {[...Array(5)].map((_, index) => (
+              <Star
+                key={index}
+                className={
+                  index < rating ? "text-yellow-500 cursor-pointer" : "text-gray-300 cursor-pointer"
+                }
+                size={24}
+                fill={index < rating ? "currentColor" : "none"}
+                onClick={() => setRating(index + 1)}
+              />
+            ))}
+          </div>
+
+          <Button onClick={handleReviewSubmit} className="w-full">
+            Enviar Review
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}"
+
++++
+Certo, vamos avançar para a pŕoxima task então:
+"[ ] - 🔑 2. Implementar Autenticação (Login e Registro)
+
+📌 Objetivo:
+
+    Criar fluxo de login e registro para diferenciar usuários logados.
+    Armazenar o token JWT em um cookie seguro.
+    Criar um contexto global para gerenciar autenticação.
+
+📌 O que precisa ser feito?
+✅ Criar a página /login com um formulário.
+✅ Criar a página /register para cadastro de usuários.
+✅ Criar AuthProvider.js para gerenciar estado global de autenticação.
+✅ Criar middleware para bloquear rotas para usuários não autenticados."
+
+lembrando que a página de login já existe, pode revisá-la se quiser (até para mantermos um padrão com a rota de register):
+"// src/app/login/page.js
+"use client";
+
+import { useState } from "react";
+import { useAuthStore } from "@/store/authStore";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+export default function LoginPage() {
+  const login = useAuthStore((state) => state.login);
+  const router = useRouter();
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    const success = await login(identifier, password); // Aguarda o retorno do login
+
+    if (success) {
+      const redirectPath = localStorage.getItem("redirectAfterLogin") || "/movies";
+      console.log("Redirecting to:", redirectPath);
+      localStorage.removeItem("redirectAfterLogin"); // Remove o redirecionamento após o login
+
+      router.push(redirectPath);
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen">
+      <h1 className="text-2xl font-bold mb-4">Login</h1>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <Label>Email ou Username</Label>
+        <Input
+          type="text"
+          placeholder="Digite seu email ou username"
+          value={identifier}
+          onChange={(e) => setIdentifier(e.target.value)}
+        />
+        <Label>Senha</Label>
+        <Input
+          type="password"
+          placeholder="Digite sua senha"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <Button type="submit" className="mt-2">
+          Entrar
+        </Button>
+      </form>
+    </div>
+  );
+}"
+
+Então além de revisar a rota de login você vai precisar criar a de register. 
+
++++
+Não precisa, era apenas uma dúvida mesmo, obrigado por esclarecer. Agora vamos retornar a página de login primeiro, eu inseri a sua sugestão:
+"// src/app/login/page.js
+"use client";
+
+import { useState } from "react";
+import { useAuthStore } from "@/store/authStore";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+export default function LoginPage() {
+  const login = useAuthStore((state) => state.login);
+  const router = useRouter();
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    const success = await login(identifier, password); // Aguarda o retorno do login
+
+    if (success) {
+      const redirectPath = localStorage.getItem("redirectAfterLogin") || "/movies";
+      console.log("Redirecting to:", redirectPath);
+      localStorage.removeItem("redirectAfterLogin"); // Remove o redirecionamento após o login
+
+      router.push(redirectPath);
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen">
+      <h1 className="text-2xl font-bold mb-4">Login</h1>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <Label>Email ou Username</Label>
+        <Input
+          type="text"
+          placeholder="Digite seu email ou username"
+          value={identifier}
+          onChange={(e) => setIdentifier(e.target.value)}
+        />
+        <Label>Senha</Label>
+        <Input
+          type="password"
+          placeholder="Digite sua senha"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <Button type="submit" className="mt-2">
+          Entrar
+        </Button>
+        <p className="mt-4 text-sm text-gray-600">
+          Ainda não tem uma conta?{" "}
+          <a href="/register" className="text-blue-600 underline hover:text-blue-800">
+            Cadastre-se
+          </a>
+        </p>
+      </form>
+    </div>
+  );
+}"
+
+O visual da página você pode ver na imagem anexa 1, e eu queria propor a possibilidade de utilizarmos typography.jsx aqui tambpém, relembre o seu conteúdo:
+"import * as React from "react";
+
+export function TypographyH1({ children }) {
+  return <h1 className="scroll-m-20 text-4xl font-extrabold tracking-tight lg:text-5xl">{children}</h1>;
+}
+
+export function TypographyH2({ children }) {
+  return <h2 className="scroll-m-20 text-3xl font-semibold tracking-tight">{children}</h2>;
+}
+
+export function TypographyH3({ children }) {
+  return <h3 className="scroll-m-20 text-2xl font-semibold tracking-tight">{children}</h3>;
+}
+
+export function TypographyH4({ children }) {
+  return <h4 className="scroll-m-20 text-lg font-medium tracking-tight">{children}</h4>;
+}
+
+export function TypographyP({ children }) {
+  return <p className="leading-7 [&:not(:first-child)]:mt-6">{children}</p>;
+}
+
+export function TypographyBlockquote({ children }) {
+  return (
+    <blockquote className="mt-6 border-l-2 pl-6 italic">
+      {children}
+    </blockquote>
+  );
+}
+
+export function TypographyList({ children }) {
+  return <ul className="my-6 ml-6 list-disc [&>li]:mt-2">{children}</ul>;
+}"
+
++++
+Ok, e agora a página de registro:
+"// src/app/register/page.js
+"use client";
+
+import { useState } from "react";
+import axios from "axios";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+export default function RegisterPage() {
+  const router = useRouter();
+  const [formData, setFormData] = useState({
+    username: "",
+    email: "",
+    password: "",
+  });
+  const [error, setError] = useState("");
+
+  const handleChange = (e) => {
+    setFormData((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value,
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+
+    try {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/register`, formData);
+      router.push("/login"); // Redireciona após registro bem-sucedido
+    } catch (err) {
+      console.error("Erro ao registrar:", err.response?.data || err.message);
+      setError(err.response?.data?.message || "Erro ao registrar usuário.");
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen">
+      <h1 className="text-2xl font-bold mb-4">Registro</h1>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3 w-full max-w-sm">
+        <Label>Username</Label>
+        <Input
+          name="username"
+          placeholder="Digite seu nome de usuário"
+          value={formData.username}
+          onChange={handleChange}
+          required
+        />
+
+        <Label>Email</Label>
+        <Input
+          type="email"
+          name="email"
+          placeholder="Digite seu email"
+          value={formData.email}
+          onChange={handleChange}
+          required
+        />
+
+        <Label>Senha</Label>
+        <Input
+          type="password"
+          name="password"
+          placeholder="Digite sua senha"
+          value={formData.password}
+          onChange={handleChange}
+          required
+        />
+
+        {error && <p className="text-red-500 text-sm">{error}</p>}
+
+        <Button type="submit" className="mt-2">
+          Cadastrar
+        </Button>
+      </form>
+    </div>
+  );
+}"
+
++++
+Ok, aparentemente está boa a página de registro, agora vamos revisar/validar se ela está conversando corretamente com as rotas de backend, ou a estrutura que foi pensada lá. 
+
+Veja a rota /register:
+"/* src/routes/registerRoute.routes.js */
+const { Router } = require('express');
+
+const { register, checkUserExists } = require('../controllers/userController');
+const { validateRegister, validateCheckUserExists } = require('../middlewares/validators');
+
+const router = Router();
+
+router.post('/', validateRegister, register);
+router.post('/check', validateCheckUserExists, checkUserExists);
+
+module.exports = router;"
+
+Aqui vemos que existe uma post '/check' para verificar se o usuário existe antes de aceitar os dados do formulário, lembrando que sempre tratamos com o identifier no backend, que é email ou username:
+"// Esquema para verificar se o usuário existe
+const checkUserSchema = joi.object({
+  identifier: joi
+    .alternatives()
+    .try(joi.string().email(), joi.string().min(3))
+    .required()
+    .messages({
+      "string.empty": errorMessages.allFieldsRequired,
+      "alternatives.try": errorMessages.invalidFields,
+      "any.required": "400|Identifier deve existir",
+    }),
+});"
+
+E aí para o registro em si, temos essa validação:
+"// Esquema para registro
+const registerSchema = joi.object({
+  name: joi.string().min(5).required().messages({
+    "string.min": "400|Nome deve ter pelo menos 5 caracteres",
+    "string.empty": errorMessages.allFieldsRequired,
+    "any.required": "400|Nome deve existir",
+  }),
+  username: joi.string().min(3).pattern(usernameRegex).required().messages({
+    "string.min": errorMessages.usernameMinLength,
+    "string.empty": errorMessages.allFieldsRequired,
+    "any.required": "400|Username deve existir",
+    "string.pattern.base": errorMessages.usernameInvalid,
+  }),
+  email: joi.string().email().invalid(joi.ref("username")).required().messages({
+    "string.empty": errorMessages.allFieldsRequired,
+    "string.email": errorMessages.emailInvalid,
+    "any.required": errorMessages.emailRequired,
+    "any.invalid": errorMessages.emailUsernameEqual,
+  }),
+  password: joi.string().min(8).pattern(passwordRegex).required().messages({
+    "string.min": errorMessages.passwordMinLength,
+    "string.empty": errorMessages.allFieldsRequired,
+    "string.pattern.base": errorMessages.incorrectPassword,
+    "any.required": "400|Password deve existir",
+  }),
+});"
+
+Agora revise o frontend para ver se está de condizente:
+"// src/app/register/page.js
+"use client";
+
+import { useState } from "react";
+import axios from "axios";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { TypographyH1, TypographyP } from "@/components/ui/typography";
+
+export default function RegisterPage() {
+  const router = useRouter();
+  const [formData, setFormData] = useState({
+    username: "",
+    email: "",
+    password: "",
+  });
+  const [error, setError] = useState("");
+
+  const handleChange = (e) => {
+    setFormData((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value,
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+
+    try {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/register`, formData);
+      router.push("/login");
+    } catch (err) {
+      console.error("Erro ao registrar:", err.response?.data || err.message);
+      setError(err.response?.data?.message || "Erro ao registrar usuário.");
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen px-4">
+      <TypographyH1 className="mb-6 text-center">Registro</TypographyH1>
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3 w-full max-w-sm">
+        <Label>Username</Label>
+        <Input
+          name="username"
+          placeholder="Digite seu nome de usuário"
+          value={formData.username}
+          onChange={handleChange}
+          required
+        />
+
+        <Label>Email</Label>
+        <Input
+          type="email"
+          name="email"
+          placeholder="Digite seu email"
+          value={formData.email}
+          onChange={handleChange}
+          required
+        />
+
+        <Label>Senha</Label>
+        <Input
+          type="password"
+          name="password"
+          placeholder="Digite sua senha"
+          value={formData.password}
+          onChange={handleChange}
+          required
+        />
+
+        {error && <TypographyP className="text-red-500 text-sm mt-2">{error}</TypographyP>}
+
+        <Button type="submit" className="mt-2">
+          Cadastrar
+        </Button>
+
+        <TypographyP className="mt-4 text-sm text-center text-gray-600">
+          Já tem uma conta?{" "}
+          <a href="/login" className="text-blue-600 underline hover:text-blue-800">
+            Faça login
+          </a>
+        </TypographyP>
+      </form>
+    </div>
+  );
+}"
+
++++
+Não precisamos sugerir nomes disponíveis em tempo real, mas seria interessante ao usuário entrar com username e/ou email, que fizesse uma requisição pra rota apropriada do backend devolvendo se já existe ou não, e em caso negativo exibir algum tipo de aviso ao usuário. O que me diz? Estamos assim:
+"// src/app/register/page.js
+"use client";
+
+import { useState } from "react";
+import axios from "axios";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { TypographyH1, TypographyP } from "@/components/ui/typography";
+
+export default function RegisterPage() {
+  const router = useRouter();
+  const [formData, setFormData] = useState({
+    name: "",
+    username: "",
+    email: "",
+    password: "",
+  });
+  const [error, setError] = useState("");
+
+  const handleChange = (e) => {
+    setFormData((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value,
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+
+    try {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/register`, formData);
+      router.push("/login");
+    } catch (err) {
+      console.error("Erro ao registrar:", err.response?.data || err.message);
+      setError(err.response?.data?.message || "Erro ao registrar usuário.");
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen px-4">
+      <TypographyH1 className="mb-6 text-center">Registro</TypographyH1>
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3 w-full max-w-sm">
+        <Label>Nome completo</Label>
+        <Input
+          name="name"
+          placeholder="Digite seu nome"
+          value={formData.name}
+          onChange={handleChange}
+          required
+        />
+
+        <Label>Username</Label>
+        <Input
+          name="username"
+          placeholder="Digite seu nome de usuário"
+          value={formData.username}
+          onChange={handleChange}
+          required
+        />
+
+        <Label>Email</Label>
+        <Input
+          type="email"
+          name="email"
+          placeholder="Digite seu email"
+          value={formData.email}
+          onChange={handleChange}
+          required
+        />
+
+        <Label>Senha</Label>
+        <Input
+          type="password"
+          name="password"
+          placeholder="Digite sua senha"
+          value={formData.password}
+          onChange={handleChange}
+          required
+        />
+
+        {error && <TypographyP className="text-red-500 text-sm mt-2">{error}</TypographyP>}
+
+        <Button type="submit" className="mt-2">
+          Cadastrar
+        </Button>
+
+        <TypographyP className="mt-4 text-sm text-center text-gray-600">
+          Já tem uma conta?{" "}
+          <a href="/login" className="text-blue-600 underline hover:text-blue-800">
+            Faça login
+          </a>
+        </TypographyP>
+      </form>
+    </div>
+  );
+}"
+
++++
+Ok, estou fazendo um teste real em nossa lógica, e introduzi o email de um usuário já existente, veja a issue que tivemos no front:
+"Console Error
+
+
+Erro ao verificar disponibilidade: "Request failed with status code 409"
+
+src/app/register/page.js (53:17) @ checkIfExists
+
+
+  51 |         setFieldErrors((prev) => ({ ...prev, [fieldName]: "" }));
+  52 |       } else {
+> 53 |         console.error("Erro ao verificar disponibilidade:", err.message);
+     |                 ^
+  54 |       }
+  55 |     }
+  56 |   };
+Call Stack
+4
+
+Show 3 ignore-listed frame(s)
+checkIfExists
+src/app/register/page.js (53:17)"
+
+O erro no console:
+"intercept-console-error.js:50 Erro ao verificar disponibilidade: Request failed with status code 409"
+
+E aqui os logs do backend:
+"[*UserService*]: Verificando existência de usuário teste@nanoflix.com
+Executing (default): SELECT `id`, `name`, `username`, `email`, `password`, `role`, `created_at` AS `createdAt`, `updated_at` AS `updatedAt` FROM `users` AS `User` WHERE (`User`.`username` = 'teste@nanoflix.com' OR `User`.`email` = 'teste@nanoflix.com') LIMIT 1;
+[*UserService*]: Usuário já existe teste@nanoflix.com
+[*UserController*]: Erro ao verificar usuário User already exists
+[*BoomError*]: Handled Boom error User already exists"
+
+O código o backend que gera o erro, creio que através do boom:
+"const checkUserExists = async (userData) => {
+  const { identifier } = userData;
+
+  const user = await checkUserExistsBy(identifier);
+  if (user) {
+    logger.warn("UserService", "Usuário já existe", identifier);
+    throw boom.conflict("User already exists");
+  }
+
+  return { message: "User does not exist" };
+};"
+
+Verifique quem está errado aqui, se o front ou o backend. Nosso código pertinente do front acho que seria esse:
+"const checkIfExists = async (identifier, fieldName) => {
+    if (!identifier.trim() || identifier === lastChecked.current[fieldName]) return;
+
+    lastChecked.current[fieldName] = identifier;
+
+    try {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/register/check`, { identifier });
+
+      // Se deu certo, o usuário existe -> exibe erro
+      setFieldErrors((prev) => ({
+        ...prev,
+        [fieldName]: `${fieldName === "username" ? "Usuário" : "Email"} já está em uso.`,
+      }));
+    } catch (err) {
+      // Se caiu no catch com 404, significa que não existe, então limpamos erro
+      if (err.response?.status === 404) {
+        setFieldErrors((prev) => ({ ...prev, [fieldName]: "" }));
+      } else {
+        console.error("Erro ao verificar disponibilidade:", err.message);
+      }
+    }
+  };"
+
++++
+Ok, agora nossa lógica está funcionando como esperado, porém acho que podemos melhorar o UX da página, você pode visualizar a sitaução dela nas imagens anexas 1 e 2. 
+
+Eu penso que:
+- A mensagem correspondente deveria estar mais perto do campo correspondente 
+- Poderia estar em uma cor diferente, atualmente está em preto.
+- O botão de 'Cadastrar' quando bloqueado deveria ter também uma cor mais indicativa.
+
+O que me diz? O código está assim:
+"// src/app/register/page.js
+"use client";
+
+import { useState } from "react";
+import axios from "axios";
+import { useRouter } from "next/navigation";
+import { useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { TypographyH1, TypographyP } from "@/components/ui/typography";
+
+export default function RegisterPage() {
+  const router = useRouter();
+  const [formData, setFormData] = useState({
+    name: "",
+    username: "",
+    email: "",
+    password: "",
+  });
+  const lastChecked = useRef({ username: "", email: "" });
+  const [fieldErrors, setFieldErrors] = useState({
+    username: "",
+    email: "",
+  });
+  const [error, setError] = useState("");
+
+  const handleChange = (e) => {
+    setFormData((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value,
+    }));
+  };
+
+  const checkIfExists = async (identifier, fieldName) => {
+    if (!identifier.trim() || identifier === lastChecked.current[fieldName]) return;
+
+    lastChecked.current[fieldName] = identifier;
+
+    try {
+      // Aqui o backend vai retornar 404 se não existir (bom), 409 se já existir (erro esperado)
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/register/check`, { identifier });
+
+      // Se chegou aqui, significa que está TUDO BEM, ou seja, não existe
+      setFieldErrors((prev) => ({ ...prev, [fieldName]: "" }));
+    } catch (err) {
+      if (err.response?.status === 409) {
+        // 409 = já existe
+        setFieldErrors((prev) => ({
+          ...prev,
+          [fieldName]: `${fieldName === "username" ? "Usuário" : "Email"} já está em uso.`,
+        }));
+      } else {
+        console.error("Erro ao verificar disponibilidade:", err.message);
+      }
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (fieldErrors.username || fieldErrors.email) {
+      setError("Corrija os erros antes de continuar.");
+      return;
+    }
+    setError("");
+
+    try {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/register`, formData);
+      router.push("/login");
+    } catch (err) {
+      console.error("Erro ao registrar:", err.response?.data || err.message);
+      setError(err.response?.data?.message || "Erro ao registrar usuário.");
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen px-4">
+      <TypographyH1 className="mb-6 text-center">Registro</TypographyH1>
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3 w-full max-w-sm">
+        <Label>Nome completo</Label>
+        <Input
+          name="name"
+          placeholder="Digite seu nome"
+          value={formData.name}
+          onChange={handleChange}
+          required
+        />
+
+        <Label>Username</Label>
+        <Input
+          name="username"
+          placeholder="Digite seu nome de usuário"
+          value={formData.username}
+          onChange={handleChange}
+          onBlur={() => checkIfExists(formData.username, "username")}
+          required
+        />
+        {fieldErrors.username && (
+          <TypographyP className="text-red-500 text-sm -mt-2">{fieldErrors.username}</TypographyP>
+        )}
+
+        <Label>Email</Label>
+        <Input
+          type="email"
+          name="email"
+          placeholder="Digite seu email"
+          value={formData.email}
+          onChange={handleChange}
+          onBlur={() => checkIfExists(formData.email, "email")}
+          required
+        />
+        {fieldErrors.email && (
+          <TypographyP className="text-red-500 text-sm -mt-2">{fieldErrors.email}</TypographyP>
+        )}
+
+        <Label>Senha</Label>
+        <Input
+          type="password"
+          name="password"
+          placeholder="Digite sua senha"
+          value={formData.password}
+          onChange={handleChange}
+          required
+        />
+
+        {error && <TypographyP className="text-red-500 text-sm mt-2">{error}</TypographyP>}
+
+        <Button type="submit" className="mt-2">
+          Cadastrar
+        </Button>
+
+        <TypographyP className="mt-4 text-sm text-center text-gray-600">
+          Já tem uma conta?{" "}
+          <a href="/login" className="text-blue-600 underline hover:text-blue-800">
+            Faça login
+          </a>
+        </TypographyP>
+      </form>
+    </div>
+  );
+}"
+
+Lembrando que estamos usando os elementos do typography.jsx:
+"import * as React from "react";
+
+export function TypographyH1({ children }) {
+  return <h1 className="scroll-m-20 text-4xl font-extrabold tracking-tight lg:text-5xl">{children}</h1>;
+}
+
+export function TypographyH2({ children }) {
+  return <h2 className="scroll-m-20 text-3xl font-semibold tracking-tight">{children}</h2>;
+}
+
+export function TypographyH3({ children }) {
+  return <h3 className="scroll-m-20 text-2xl font-semibold tracking-tight">{children}</h3>;
+}
+
+export function TypographyH4({ children }) {
+  return <h4 className="scroll-m-20 text-lg font-medium tracking-tight">{children}</h4>;
+}
+
+export function TypographyP({ children }) {
+  return <p className="leading-7 [&:not(:first-child)]:mt-6">{children}</p>;
+}
+
+export function TypographyBlockquote({ children }) {
+  return (
+    <blockquote className="mt-6 border-l-2 pl-6 italic">
+      {children}
+    </blockquote>
+  );
+}
+
+export function TypographyList({ children }) {
+  return <ul className="my-6 ml-6 list-disc [&>li]:mt-2">{children}</ul>;
+}"
+
+++++
+Ok, eu fiz um compilado dos planejamentos anteriores, colocando em perspectiva. Para não ficar muita coisa junta, eu peguei o que seria a próxima task no conteúdo de planejamento original e tentei agregar o que mais teve de mensagem sua relacionado a ela, a ordem está do mais antigo em cima para o mais recente em baixo, veja:
+Item/task inicial/original:
+"[ ] - 🔄 4. Melhorar a Navegação e Estrutura Geral
+
+📌 Objetivo:
+
+    Adicionar links entre as páginas para facilitar a navegação.
+    Criar um layout.js para reutilizar cabeçalho e rodapé.
+    Proteger rotas que exigem login.
+
+📌 O que precisa ser feito?
+✅ Criar um <Header /> e um <Footer />.
+✅ Adicionar next/link nos filmes para navegar para /movies/[id].
+✅ Criar middleware (middleware.ts) para bloquear acesso a rotas privadas."
+
+Mensagens que parecem estar relacionadas:
+"- Criar middleware de proteção de rotas (próximo passo)
+- Criar AuthProvider (opcional, se quiser migrar de zustand para context, mas pode manter zustand como já está)
+
+- Se quiser, podemos agora implementar a AuthProvider com persistência via cookie ou localStorage e também o middleware para bloquear rotas privadas. Deseja seguir com isso agora?
+
+- Deseja seguir agora para o AuthProvider e middleware de proteção de rotas?
+
+- Implementar o AuthProvider global para gerenciamento do usuário via context (com persistência e reatividade),
+Criar o middleware que bloqueia rotas protegidas."
+
+Eu acho que isso encaixa/tem relação com os itesn 1 e 2 da lista atual:
+"1. 🔐 Middleware de Proteção de Rotas (Autenticação)
+
+Objetivo: Impedir acesso a páginas restritas por usuários não logados
+
+    Criar middleware no Next.js para redirecionar não autenticados
+    Pode ser aplicado em rotas como /movies/review, caso sejam criadas
+    Exemplo de uso: middleware.js com verificação de cookie/token
+
+2. 🧠 Centralização e Persistência da Autenticação
+
+Objetivo: Garantir que o usuário permaneça logado entre sessões
+
+    Revisar se o authStore utiliza cookies ou apenas localStorage
+    Criar/verificar persistência com cookies HTTP-only se desejado (mais seguro)
+    Carregar token e estado inicial ao montar a app (em layout.tsx ou via provider)"
+
+Agora, vamos rever esses conteúdos/conceitos e discutir o que faz sentido ainda implementarmos disso, e como. 
+
+Pontos de atenção:
+ - O item 2, do 'O que precisa ser feito?' original acho que já está implementado, visto que conseguimos navegar para a página de details a partir dos cards da '/movies'. 
+    => "Adicionar links entre as páginas para facilitar a navegação.
+        ✅ Adicionar next/link nos filmes para navegar para /movies/[id]."
+
+ - O item 1, do 'O que precisa ser feito?' original, vamos deixar para um próximo momento.
+    =>"Criar um layout.js para reutilizar cabeçalho e rodapé.
+       ✅ Criar um <Header /> e um <Footer />."
+
+ - Estamos utilizando o 'zustand', e não acho que faz sentido trocar por Context. Atualmente nele temos 2 arquivos, 'authStore.js' e 'moviesStore.js'. 
+    => Eu acho que a parte de lidar com autenticação/toekn de usuários e localstorage já está implementada o suficiente, mas você pode dar a sua opinião a respeito, ela está no 'authStore':
+"// src/store/authStore.js
+"use client";
+
+import { create } from "zustand";
+import axios from "axios";
+
+export const useAuthStore = create((set) => ({
+  user: null,
+  token: null,
+  isAuthenticated: false,
+
+  login: async (identifier, password) => {
+    try {
+      console.log("API URL:", process.env.NEXT_PUBLIC_API_URL);
+      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/login`, { identifier, password });
+
+      set({ user: res.data, token: res.data.token, isAuthenticated: true });
+      localStorage.setItem("nanoflix-token", res.data.token);
+
+      return true; // Indica que o login foi bem-sucedido
+    } catch (error) {
+      console.error("Erro ao fazer login:", error.response?.data || error.message);
+      return false; // Indica falha no login
+    }
+  },
+
+  logout: () => {
+    set({ user: null, token: null, isAuthenticated: false });
+    localStorage.removeItem("nanoflix-token");
+  },
+
+  checkAuth: () => {
+    const storedToken = localStorage.getItem("nanoflix-token");
+    if (storedToken) {
+      set({ token: storedToken, isAuthenticated: true });
+    }
+  },
+}));"
+
+    => Queremos um projeto simples, não vamos utilizar cookies aqui. 
+
+- Para o Middleware de Proteção de Rotas, a '/movies/review' não tem necessidade, pois já resolvemos enviando o usuário para a tela de login caso não esteja logado/autenticado. A alternativa aqui seria fazermos a rota que o administrador irá utilizar para adicionar novos filmes, a saber:
+"router.post("/", decode, authorize(["admin"]), validateMovie, createMovie);"
+    => Lembrando que temos a coluna 'role' na tabela de users (estou colocando anexa a imagem da tabela no banco).
+
+- Esse item que você sugeriu eu não entendi:
+"Carregar token e estado inicial ao montar a app (em layout.tsx ou via provider)"
+
+O que me diz?
+
++++
+Ok, agora retornando a nossa task. Nós já temos validação no backend pelo joi né? O que precisamos é alinhar os campos.  
+
+Os dados são manipulados em cammelCase no código, são convertidos para snake_case apenas antes de serem inseridos no banco, pois as tabelas usam snake_case. 
+
+Veja a estrutura da model:
+"Movie.init(
+    {
+      id: {
+        type: DataTypes.INTEGER,
+        autoIncrement: true,
+        primaryKey: true,
+      },
+      title: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        unique: true,
+      },
+      description: {
+        type: DataTypes.TEXT,
+        allowNull: false,
+      },
+      genre: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
+      release_year: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+      },
+      url_image: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
+    },"
+
+Então de cara precisamos fixar o schema:
+"// Esquema para inserir um novo movie
+const movieSchema = joi.object({
+  title: joi.string().required().messages({
+    "string.empty": errorMessages.allFieldsRequired,
+    "any.required": errorMessages.titleRequired,
+  }),
+  directedBy: joi.string().required().messages({
+    "string.empty": errorMessages.allFieldsRequired,
+    "any.required": errorMessages.directedByRequired,
+  }),
+  releaseYear: joi.number().integer().min(1888).required().messages({
+    "number.base": errorMessages.releaseYearRequired,
+    "number.min": "400|ReleaseYear deve ser um ano válido a partir de 1888",
+    "any.required": errorMessages.releaseYearRequired,
+  }),
+  genre: joi.string().required().messages({
+    "string.empty": errorMessages.allFieldsRequired,
+    "any.required": errorMessages.genreRequired,
+  }),
+  actors: joi.array().items(joi.string()).min(1).required().messages({
+    "array.base": "400|Actors deve ser uma lista de strings",
+    "array.min": errorMessages.actorsRequired,
+    "any.required": errorMessages.actorsRequired,
+  }),
+  urlImage: joi.string().uri().required().messages({
+    "string.empty": errorMessages.allFieldsRequired,
+    "string.uri": "400|URL da imagem deve ser válida",
+    "any.required": errorMessages.urlImageRequired,
+  }),
+});"
+
+E também a service:
+"const createMovie = async (movieData) => {
+  const { title, directedBy, releaseYear, genre, actors, urlImage } = movieData;
+
+  logger.info("MoviesService", "Tentativa de criação de filme", title);
+
+  // Verifica se já existe um filme com o mesmo título e ano
+  const existingMovie = await Movie.findOne({ where: { title, releaseYear } });
+
+  if (existingMovie) {
+    logger.warn("MoviesService", "Filme já cadastrado", title);
+    throw boom.conflict("Movie already exists");
+  }
+
+  const newMovie = await Movie.create({
+    title,
+    directedBy,
+    releaseYear,
+    genre,
+    actors: JSON.stringify(actors), // Salva como JSON string para fácil manipulação
+    urlImage,
+  });
+
+  if (!newMovie) {
+    logger.error("MoviesService", "Erro ao criar filme", title);
+    throw boom.internal("Failed to create movie");
+  }
+
+  logger.info("MoviesService", "Filme criado com sucesso", title);
+  return newMovie;
+};"
+
+Após estar correto aqui, podemos revisar a rota do front.
+
++++
+Melhorou, apenas 1 erro no schema, acho que nessa linha:
+""any.required": errorMessages.descriptionRequired,"
+
+como pode ver no erro:
+"/media/samuel/dados-linux13/testes-tecnicos/nanoflix/backend/node_modules/joi/node_modules/@hapi/hoek/lib/assert.js:21
+    throw new AssertError(args);
+    ^
+
+Error: Invalid message for any.required
+    at new module.exports (/media/samuel/dados-linux13/testes-tecnicos/nanoflix/backend/node_modules/joi/node_modules/@hapi/hoek/lib/error.js:23:19)
+    at module.exports (/media/samuel/dados-linux13/testes-tecnicos/nanoflix/backend/node_modules/joi/node_modules/@hapi/hoek/lib/assert.js:21:11)
+    at exports.compile (/media/samuel/dados-linux13/testes-tecnicos/nanoflix/backend/node_modules/joi/lib/messages.js:51:9)
+    at exports.preferences (/media/samuel/dados-linux13/testes-tecnicos/nanoflix/backend/node_modules/joi/lib/common.js:165:36)
+    at internals.Base.prefs (/media/samuel/dados-linux13/testes-tecnicos/nanoflix/backend/node_modules/joi/lib/base.js:236:35)
+    at internals.Base.method [as messages] (/media/samuel/dados-linux13/testes-tecnicos/nanoflix/backend/node_modules/joi/lib/types/any.js:60:29)
+    at Object.<anonymous> (/media/samuel/dados-linux13/testes-tecnicos/nanoflix/backend/src/middlewares/joiSchemas.js:122:40)
+    at Module._compile (node:internal/modules/cjs/loader:1469:14)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1548:10)
+    at Module.load (node:internal/modules/cjs/loader:1288:32)
+
+Node.js v20.17.0
+[nodemon] app crashed - waiting for file changes before starting..."
+
+Veja o que temos em 'errorMessages':
+"const errorMessages = {
+  allFieldsRequired: "400|Todos os campos devem ser preenchidos",
+  invalidFields: "422|Campos inválidos",
+  incorrectPassword: "400|Senha em formato inválido",
+  usernameMinLength: "400|Nome de usuário deve ter pelo menos 3 caracteres",
+  passwordMinLength: "400|Senha deve ter pelo menos 8 caracteres",
+  usernameInvalid: "400|Username deve conter apenas letras, números e underscores",
+  emailRequired: "400|Email deve existir",
+  emailInvalid: "400|Email deve ser válido",
+  emailUsernameEqual: "400|Email e username não podem ser iguais",
+  titleRequired: "400|Title deve existir",
+  directedByRequired: "400|DirectedBy deve existir",
+  releaseYearRequired: "400|ReleaseYear deve existir e ser um ano válido",
+  genreRequired: "400|Genre deve existir",
+  actorsRequired: "400|Actors deve existir e conter pelo menos um ator",
+  urlImageRequired: "400|URL da imagem deve existir",
+  movieIdRequired: "400|O ID do filme é obrigatório",
+  movieIdInvalid: "400|O ID do filme deve ser um número inteiro",
+  ratingRequired: "400|A avaliação é obrigatória",
+  ratingMin: "400|A avaliação deve ser no mínimo 1",
+  ratingMax: "400|A avaliação deve ser no máximo 5",
+  commentInvalid: "400|O comentário deve ser um texto",
+};"
+
+++
+Ok, agora tudo parece coerente no backend. Vamos voltar a analisar/revisar o front, pois acho que não está 100% condizente com o que esperamos receber no backend:
+"// src/app/movies/new/page.js
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuthStore } from "@/store/authStore";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { TypographyH1, TypographyP } from "@/components/ui/typography";
+import axios from "axios";
+
+export default function NewMoviePage() {
+  const router = useRouter();
+  const { isAuthenticated, token, user, checkAuth } = useAuthStore();
+
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    year: "",
+    genre: "",
+    url_image: "",
+  });
+
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    checkAuth();
+
+    if (!isAuthenticated) {
+      router.push("/login");
+    }
+
+    if (user && user.role !== "admin") {
+      router.push("/movies");
+    }
+  }, [isAuthenticated, user]);
+
+  const handleChange = (e) => {
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+
+    try {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/movies`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      router.push("/movies");
+    } catch (err) {
+      console.error("Erro ao criar filme:", err.response?.data || err.message);
+      setError(err.response?.data?.message || "Erro ao criar filme.");
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen px-4">
+      <TypographyH1 className="mb-6 text-center">Novo Filme</TypographyH1>
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3 w-full max-w-md">
+        <Label>Título</Label>
+        <Input name="title" value={formData.title} onChange={handleChange} required />
+
+        <Label>Descrição</Label>
+        <Input name="description" value={formData.description} onChange={handleChange} required />
+
+        <Label>Ano</Label>
+        <Input type="number" name="year" value={formData.year} onChange={handleChange} required />
+
+        <Label>Gênero</Label>
+        <Input name="genre" value={formData.genre} onChange={handleChange} required />
+
+        <Label>URL da Imagem</Label>
+        <Input name="url_image" value={formData.url_image} onChange={handleChange} required />
+
+        {error && <TypographyP className="text-red-500 text-sm">{error}</TypographyP>}
+
+        <Button type="submit" className="mt-2">
+          Cadastrar Filme
+        </Button>
+      </form>
+    </div>
+  );
+}"
+
+++++
+Não, você está confundindo. O backend espera receber isso:
+"// Esquema para inserir um novo movie
+const movieSchema = joi.object({
+  title: joi.string().required().messages({
+    "string.empty": errorMessages.allFieldsRequired,
+    "any.required": errorMessages.titleRequired,
+  }),
+  description: joi.string().required().messages({
+    "string.empty": errorMessages.allFieldsRequired,
+    "any.required": errorMessages.descriptionRequired,
+  }),
+  genre: joi.string().required().messages({
+    "string.empty": errorMessages.allFieldsRequired,
+    "any.required": errorMessages.genreRequired,
+  }),
+  releaseYear: joi.number().integer().min(1888).required().messages({
+    "number.base": errorMessages.releaseYearRequired,
+    "number.min": "400|ReleaseYear deve ser um ano válido a partir de 1888",
+    "any.required": errorMessages.releaseYearRequired,
+  }),
+  urlImage: joi.string().uri().required().messages({
+    "string.empty": errorMessages.allFieldsRequired,
+    "string.uri": "400|URL da imagem deve ser válida",
+    "any.required": errorMessages.urlImageRequired,
+  }),
+});"
+
+Agora revise o front para enviar os dados corretamente:
+"// src/app/movies/new/page.js
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuthStore } from '@/store/authStore';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { TypographyH1, TypographyP } from '@/components/ui/typography';
+import axios from 'axios';
+
+export default function NewMoviePage() {
+  const router = useRouter();
+  const { isAuthenticated, token, user, checkAuth } = useAuthStore();
+
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    releaseYear: '',
+    genre: '',
+    urlImage: '',
+    directedBy: '',
+    actors: '',
+  });
+
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    checkAuth();
+
+    if (!isAuthenticated) {
+      router.push('/login');
+    }
+
+    if (user && user.role !== 'admin') {
+      router.push('/movies');
+    }
+  }, [isAuthenticated, user]);
+
+  const handleChange = (e) => {
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    try {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/movies`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      router.push('/movies');
+    } catch (err) {
+      console.error('Erro ao criar filme:', err.response?.data || err.message);
+      setError(err.response?.data?.message || 'Erro ao criar filme.');
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen px-4">
+      <TypographyH1 className="mb-6 text-center">Novo Filme</TypographyH1>
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3 w-full max-w-md">
+        <Label>Título</Label>
+        <Input name="title" value={formData.title} onChange={handleChange} required />
+
+        <Label>Descrição</Label>
+        <Input name="description" value={formData.description} onChange={handleChange} required />
+
+        <Label>Diretor</Label>
+        <Input name="directedBy" value={formData.directedBy} onChange={handleChange} required />
+
+        <Label>Atores (separados por vírgula)</Label>
+        <Input name="actors" value={formData.actors} onChange={handleChange} required />
+
+        <Label>Ano de Lançamento</Label>
+        <Input
+          type="number"
+          name="releaseYear"
+          value={formData.releaseYear}
+          onChange={handleChange}
+          required
+        />
+
+        <Label>Gênero</Label>
+        <Input name="genre" value={formData.genre} onChange={handleChange} required />
+
+        <Label>URL da Imagem</Label>
+        <Input name="urlImage" value={formData.urlImage} onChange={handleChange} required />
+
+        {error && <TypographyP className="text-red-500 text-sm">{error}</TypographyP>}
+
+        <Button type="submit" className="mt-2">
+          Cadastrar Filme
+        </Button>
+      </form>
+    </div>
+  );
+}"
+
++++
+Ok, antes de testar propriamente a nova página e o envio de um novo filme, vamos melhorar uma questão do código, que eu já tinha observado na página de reviews, 
+
+Eu estava na tela de login agora, e tentei acessar a nova página alterando a url pelo navegador, os logs você pode ver aqui:
+" GET /login 200 in 9ms
+ ✓ Compiled /movies/new in 387ms (1006 modules)
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET /movies/new 200 in 522ms
+ ✓ Compiled /favicon.ico in 121ms (627 modules)
+ GET /login 200 in 243ms
+ GET /favicon.ico 200 in 420ms
+ GET /favicon.ico 200 in 204ms
+ GET /login 200 in 15ms
+ GET /login 200 in 13ms
+ GET /favicon.ico 200 in 204ms
+ GET /favicon.ico 200 in 205ms"
+
+Não apareceu nenhum erro, mas foi perceptível que tentou acessar uma rota protegida e foi redirecionado para a tela de login. A questão é que isso precisa ficar mais nítido para o usuário, através de algum tipo de mensagem ou renderização de uma página (não sei se apenas jogar outro componente por cima da atual ou uma página própria para isso, ex: '/redirect' ou '/forbiden' com a explicação do problema e um botão para ir para a tela de login, e talvez uma mensagem falando que será redirecionado em X segundos, com um contador regredindo o tempo. 
+
+O que me diz? Vamos precisar dessa solução tanto aqui:
+"// src/app/movies/new/page.js
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuthStore } from '@/store/authStore';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { TypographyH1, TypographyP } from '@/components/ui/typography';
+import axios from 'axios';
+
+export default function NewMoviePage() {
+  const router = useRouter();
+  const { isAuthenticated, token, user, checkAuth } = useAuthStore();
+
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    genre: '',
+    releaseYear: '',
+    urlImage: '',
+  });
+
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    checkAuth();
+
+    if (!isAuthenticated) {
+      router.push('/login');
+    }
+
+    if (user && user.role !== 'admin') {
+      router.push('/movies');
+    }
+  }, [isAuthenticated, user]);
+
+  const handleChange = (e) => {
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    try {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/movies`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      router.push('/movies');
+    } catch (err) {
+      console.error('Erro ao criar filme:', err.response?.data || err.message);
+      setError(err.response?.data?.message || 'Erro ao criar filme.');
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen px-4">
+      <TypographyH1 className="mb-6 text-center">Novo Filme</TypographyH1>
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3 w-full max-w-md">
+        <Label>Título</Label>
+        <Input name="title" value={formData.title} onChange={handleChange} required />
+
+        <Label>Descrição</Label>
+        <Input name="description" value={formData.description} onChange={handleChange} required />
+
+        <Label>Ano de Lançamento</Label>
+        <Input
+          type="number"
+          name="releaseYear"
+          value={formData.releaseYear}
+          onChange={handleChange}
+          required
+        />
+
+        <Label>Gênero</Label>
+        <Input name="genre" value={formData.genre} onChange={handleChange} required />
+
+        <Label>URL da Imagem</Label>
+        <Input name="urlImage" value={formData.urlImage} onChange={handleChange} required />
+
+        {error && <TypographyP className="text-red-500 text-sm">{error}</TypographyP>}
+
+        <Button type="submit" className="mt-2">
+          Cadastrar Filme
+        </Button>
+      </form>
+    </div>
+  );
+}"
+
+Quanto aqui:
+"// src/app/movies/[id]/page.js
+"use client";
+
+import { useEffect, useState } from "react";
+import axios from "axios";
+import { useMoviesStore } from "@/store/moviesStore";
+import { useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
+import { Card, CardContent } from "@/components/ui/card";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
+import { TypographyH1, TypographyH4, TypographyP } from "@/components/ui/typography";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useAuthStore } from "@/store/authStore";
+import StarRating from "@/components/ui/StarRating";
+import { Star } from "lucide-react";
+
+export default function MovieDetailsPage() {
+  const params = useParams();
+  const id = params?.id;
+  const router = useRouter();
+  const [movie, setMovie] = useState(null);
+  const [reviews, setReviews] = useState([]);
+  const [newReview, setNewReview] = useState("");
+  const [rating, setRating] = useState(0); // Inicialmente, 5 estrelas
+
+  const { getMovieById, fetchMovies, isLoaded } = useMoviesStore();
+  const { isAuthenticated, token } = useAuthStore();
+
+  useEffect(() => {
+    const savedReview = localStorage.getItem("pendingReview");
+    const savedRating = localStorage.getItem("pendingRating");
+
+    if (savedReview) {
+      setNewReview(savedReview);
+    }
+
+    if (savedRating) {
+      setRating(Number(savedRating)); // Converte string para número
+    }
+  }, []);
+
+  useEffect(() => {
+    async function fetchMovieDetails() {
+      let movieData = getMovieById(id);
+
+      if (!movieData && !isLoaded) {
+        await fetchMovies();
+        movieData = getMovieById(id);
+      }
+
+      if (movieData) {
+        setMovie(movieData);
+      } else {
+        console.error("Filme não encontrado");
+        router.push("/movies");
+      }
+    }
+
+    async function fetchReviews() {
+      try {
+        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/reviews/${id}`);
+        console.log("reviewsResponse", response);
+
+        setReviews(response.data);
+      } catch (error) {
+        console.error("Erro ao buscar reviews:", error.message);
+      }
+    }
+
+    fetchMovieDetails();
+    fetchReviews();
+  }, [id]);
+
+  async function handleReviewSubmit() {
+    if (!newReview.trim() || rating === 0) {
+      alert("Por favor, escreva um review e selecione uma nota.");
+      return;
+    }
+
+    if (!isAuthenticated) {
+      // Salva o review e redireciona para login
+      console.log("Usuário não autenticado. Salvando review para envio após login...");
+
+      localStorage.setItem("pendingReview", newReview);
+      localStorage.setItem("pendingRating", rating);
+      localStorage.setItem("redirectAfterLogin", `/movies/${id}`);
+      router.push("/login");
+      return;
+    }
+
+    try {
+      await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}/reviews`,
+        { movieId: id, comment: newReview, rating },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setNewReview("");
+      localStorage.removeItem("pendingReview");
+      localStorage.removeItem("pendingRating");
+      fetchReviews();
+    } catch (error) {
+      console.error("Erro ao enviar review:", error.message);
+    }
+  }
+
+  if (!movie) return <p className="text-center mt-6">Carregando...</p>;
+
+  return (
+    <div className="container mx-auto p-6 flex flex-col lg:flex-row items-center justify-center min-h-screen">
+      {/* Card do filme */}
+      <Card className="shadow-md transition-transform duration-200 flex flex-col w-full max-w-md lg:max-w-xs lg:mr-8">
+        <CardContent className="p-4 flex flex-col h-full justify-between items-center">
+          <AspectRatio ratio={2 / 3} className="w-full">
+            <img
+              src={movie.url_image}
+              alt={movie.title}
+              className="w-full h-full object-cover rounded-md"
+            />
+          </AspectRatio>
+          <TypographyH1 className="text-2xl font-bold text-center mt-4">{movie.title}</TypographyH1>
+          <TypographyP className="mt-4 text-center">{movie.description}</TypographyP>
+        </CardContent>
+      </Card>
+
+      {/* Seção de reviews */}
+      <div className="w-full max-w-lg lg:flex-1 flex flex-col items-center text-center">
+        <TypographyH4 className="text-lg font-semibold">Reviews</TypographyH4>
+        {reviews.length > 0 ? (
+          <ul className="mt-4 space-y-2 w-full max-w-[500px]">
+            {reviews.map((review, index) => (
+              <li key={index} className="border p-3 rounded-md shadow-sm bg-white flex flex-col">
+                <StarRating rating={review.rating} /> {/* Exibe as estrelas */}
+                <p className="mt-2">{review.comment}</p>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-center mt-2 text-gray-500">Nenhum review ainda.</p>
+        )}
+
+        {/* Formulário de review */}
+        <div className="mt-4 flex flex-col items-center w-full max-w-[500px]">
+          <Input
+            className="w-full mb-2"
+            placeholder="Escreva um review..."
+            value={newReview}
+            onChange={(e) => setNewReview(e.target.value)}
+          />
+
+          {/* Seletor de nota */}
+          <div className="flex items-center mb-4">
+            <span className="mr-2">Nota:</span>
+            {[...Array(5)].map((_, index) => (
+              <Star
+                key={index}
+                className={
+                  index < rating ? "text-yellow-500 cursor-pointer" : "text-gray-300 cursor-pointer"
+                }
+                size={24}
+                fill={index < rating ? "currentColor" : "none"}
+                onClick={() => setRating(index + 1)}
+              />
+            ))}
+          </div>
+
+          <Button onClick={handleReviewSubmit} className="w-full">
+            Enviar Review
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}"
+
+++++
+Ok, quase bom, ela direcionou para a login mas tivemos um erro:
+"Console Error
+
+Cannot update a component (`Router`) while rendering a different component (`UnauthorizedPage`). To locate the bad setState() call inside `UnauthorizedPage`, follow the stack trace as described in https://react.dev/link/setstate-in-render
+
+src/app/unauthorized/page.js (18:18) @ UnauthorizedPage.useEffect.timer
+
+
+  16 |         if (prev === 1) {
+  17 |           clearInterval(timer);
+> 18 |           router.push('/login');
+     |                  ^
+  19 |         }
+  20 |         return prev - 1;
+  21 |       });
+Call Stack
+19
+
+Show 17 ignore-listed frame(s)
+UnauthorizedPage.useEffect.timer
+src/app/unauthorized/page.js (18:18)
+UnauthorizedPage
+src/app/unauthorized/page.js (11:45)"
+
+Outra coisa, o ideal é que aqui pudesse ser mais customizado, não concorda? Ao ivés de sempre mostrar:
+"<TypographyP className="mt-4 max-w-md">
+        Você precisa estar logado para acessar esta página.
+      </TypographyP>"
+
+Poderia mostrar, no caso da /movies/id:
+"Você precisa estar logado para enviar reviews" ou "Apenas usuários logados podem enviar reviews".
+
+E no caso da /movies/new:
+"Apenas administradores tem permissão de acessar essa página."
+
+As mensagens exatas eu deixo para você sugerir, pois conhece as melhores práticas. Estamos assim:
+"// src/app/unauthorized/page.js
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { TypographyH1, TypographyP } from '@/components/ui/typography';
+import { Button } from '@/components/ui/button';
+
+export default function UnauthorizedPage() {
+  const router = useRouter();
+  const [countdown, setCountdown] = useState(5); // 5 segundos para redirecionar
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev === 1) {
+          clearInterval(timer);
+          router.push('/login');
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [router]);
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen text-center px-4">
+      <TypographyH1>Acesso Negado</TypographyH1>
+      <TypographyP className="mt-4 max-w-md">
+        Você precisa estar logado para acessar esta página.
+      </TypographyP>
+      <TypographyP className="mt-2 text-gray-500">
+        Redirecionando para a página de login em <strong>{countdown}</strong> segundos...
+      </TypographyP>
+
+      <Button className="mt-6" onClick={() => router.push('/login')}>
+        Ir para o Login agora
+      </Button>
+    </div>
+  );
+}"
+
++++
+Ok, antes de testar apenas revise se eu fiz corretamente. Na rota movies/new:
+"useEffect(() => {
+    checkAuth();
+
+    if (!isAuthenticated) {
+      router.push('/unauthorized?reason=admin_only');
+      return;
+    }
+
+    if (user && user.role !== 'admin') {
+      router.push('/movies');
+    }
+  }, [isAuthenticated, user]);"
+
+E na movies/id:
+"async function handleReviewSubmit() {
+    if (!newReview.trim() || rating === 0) {
+      alert('Por favor, escreva um review e selecione uma nota.');
+      return;
+    }
+
+    if (!isAuthenticated) {
+      // Salva o review e redireciona para login
+      console.log('Usuário não autenticado. Salvando review para envio após login...');
+
+      localStorage.setItem('pendingReview', newReview);
+      localStorage.setItem('pendingRating', rating);
+      localStorage.setItem('redirectAfterLogin', `/movies/${id}`);
+      router.push('/unauthorized?reason=review_only');
+      return;
+    }
+
+    try {
+      await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}/reviews`,
+        { movieId: id, comment: newReview, rating },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+
+      setNewReview('');
+      localStorage.removeItem('pendingReview');
+      localStorage.removeItem('pendingRating');
+      fetchReviews();
+    } catch (error) {
+      console.error('Erro ao enviar review:', error.message);
+    }
+  }"
+
++++
+Ok, eu achei estranha a mensagem que aparecei, não falava sobre administradores e coloquei um console.log, veja o que houve:
+"reason: null
+page.js:15 reason: null"
+
+Estamos assim:
+"// src/app/unauthorized/page.js
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { TypographyH1, TypographyP } from '@/components/ui/typography';
+import { Button } from '@/components/ui/button';
+
+export default function UnauthorizedPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [countdown, setCountdown] = useState(5);
+
+  const reason = searchParams.get('reason');
+  console.log('reason:', reason);
+
+  const getMessage = () => {
+    switch (reason) {
+      case 'admin_only':
+        return 'Apenas administradores têm permissão para acessar esta página.';
+      case 'review_only':
+        return 'Você precisa estar logado para enviar um review.';
+      default:
+        return 'Você precisa estar logado para acessar esta página.';
+    }
+  };
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCountdown((prev) => prev - 1);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (countdown === 0) {
+      router.push('/login');
+    }
+  }, [countdown, router]);
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen text-center px-4">
+      <TypographyH1>Acesso Negado</TypographyH1>
+      <TypographyP className="mt-4 max-w-md">{getMessage()}</TypographyP>
+      <TypographyP className="mt-2 text-gray-500">
+        Redirecionando para a página de login em <strong>{countdown}</strong> segundos...
+      </TypographyP>
+      <Button className="mt-6" onClick={() => router.push('/login')}>
+        Ir para o Login agora
+      </Button>
+    </div>
+  );
+}"
+
+E na new:
+"useEffect(() => {
+    checkAuth();
+
+    if (!isAuthenticated) {
+      router.push('/unauthorized?reason=admin_only');
+      return;
+    }
+
+    if (user && user.role !== 'admin') {
+      router.push('/movies');
+    }
+  }, [isAuthenticated, user]);"
+
+++++
+Ainda não deu certo, e agora ele não renderiza nada, a página fica toda em branco, veja os logs:
+"reason: null
+page.js:54 reason: null
+page.js:54 reason: null
+page.js:54 reason: null
+page.js:54 reason: null
+page.js:54 reason: null
+page.js:54 reason: null
+page.js:54 reason: null
+page.js:54 reason: null
+page.js:54 reason: null
+page.js:54 reason: null
+page.js:54 reason: null"
+
+Vamos tentar manter logs que nos auxiliem aqui. Quer pensar em outra alternativa? A página não pode receber explicitamente um parâmetro? Deve ter alguma solução para o que estamos querendo desenvolver, que não é algo incomum, concorda? Eu adicionei mais um log em 'urlParams' e ele trouxe isso o que pode ver na imagem anexa 1. O código está assim:
+"// src/app/unauthorized/page.js
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { TypographyH1, TypographyP } from '@/components/ui/typography';
+import { Button } from '@/components/ui/button';
+
+export default function UnauthorizedPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [reason, setReason] = useState(null);
+  const [countdown, setCountdown] = useState(5);
+
+  useEffect(() => {
+    // Primeiro tenta via useSearchParams
+    let reasonParam = searchParams.get('reason');
+
+    // Se falhar, tenta manualmente pela URL
+    if (!reasonParam && typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      console.log('urlParams:', urlParams);
+
+      reasonParam = urlParams.get('reason');
+    }
+
+    setReason(reasonParam);
+  }, [searchParams]);
+
+  const getMessage = () => {
+    switch (reason) {
+      case 'admin_only':
+        return 'Apenas administradores têm permissão para acessar esta página.';
+      case 'review_only':
+        return 'Você precisa estar logado para enviar um review.';
+      default:
+        return 'Você precisa estar logado para acessar esta página.';
+    }
+  };
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCountdown((prev) => prev - 1);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (countdown === 0) {
+      router.push('/login');
+    }
+  }, [countdown, router]);
+
+  // Evita renderização prematura antes de obter `reason`
+  console.log('reason:', reason);
+
+  if (reason === null) return null;
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen text-center px-4">
+      <TypographyH1>Acesso Negado</TypographyH1>
+      <TypographyP className="mt-4 max-w-md">{getMessage()}</TypographyP>
+      <TypographyP className="mt-2 text-gray-500">
+        Redirecionando para a página de login em <strong>{countdown}</strong> segundos...
+      </TypographyP>
+      <Button className="mt-6" onClick={() => router.push('/login')}>
+        Ir para o Login agora
+      </Button>
+    </div>
+  );
+}"
+
++++
+Ok, agora resolvemos. Antes de darmos continuidade para a próxima task principal, vamos ter que resolver um problema que identifiquei agora a pouco na movies/[is], que está assim:
+"// src/app/movies/[id]/page.js
+'use client';
+
+import { useEffect, useState } from 'react';
+import axios from 'axios';
+import { useMoviesStore } from '@/store/moviesStore';
+import { useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
+import { Card, CardContent } from '@/components/ui/card';
+import { AspectRatio } from '@/components/ui/aspect-ratio';
+import { TypographyH1, TypographyH4, TypographyP } from '@/components/ui/typography';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { useAuthStore } from '@/store/authStore';
+import StarRating from '@/components/ui/StarRating';
+import { Star } from 'lucide-react';
+
+export default function MovieDetailsPage() {
+  const params = useParams();
+  const id = params?.id;
+  const router = useRouter();
+  const [movie, setMovie] = useState(null);
+  const [reviews, setReviews] = useState([]);
+  const [newReview, setNewReview] = useState('');
+  const [rating, setRating] = useState(0); // Inicialmente, 5 estrelas
+
+  const { getMovieById, fetchMovies, isLoaded } = useMoviesStore();
+  const { isAuthenticated, token } = useAuthStore();
+
+  useEffect(() => {
+    const savedReview = localStorage.getItem('pendingReview');
+    const savedRating = localStorage.getItem('pendingRating');
+
+    if (savedReview) {
+      setNewReview(savedReview);
+    }
+
+    if (savedRating) {
+      setRating(Number(savedRating)); // Converte string para número
+    }
+  }, []);
+
+  useEffect(() => {
+    async function fetchMovieDetails() {
+      let movieData = getMovieById(id);
+
+      if (!movieData && !isLoaded) {
+        await fetchMovies();
+        movieData = getMovieById(id);
+      }
+
+      if (movieData) {
+        setMovie(movieData);
+      } else {
+        console.error('Filme não encontrado');
+        router.push('/movies');
+      }
+    }
+
+    async function fetchReviews() {
+      try {
+        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/reviews/${id}`);
+        console.log('reviewsResponse', response);
+
+        setReviews(response.data);
+      } catch (error) {
+        console.error('Erro ao buscar reviews:', error.message);
+      }
+    }
+
+    fetchMovieDetails();
+    fetchReviews();
+  }, [id]);
+
+  async function handleReviewSubmit() {
+    if (!newReview.trim() || rating === 0) {
+      alert('Por favor, escreva um review e selecione uma nota.');
+      return;
+    }
+
+    if (!isAuthenticated) {
+      // Salva o review e redireciona para login
+      console.log('Usuário não autenticado. Salvando review para envio após login...');
+
+      localStorage.setItem('pendingReview', newReview);
+      localStorage.setItem('pendingRating', rating);
+      localStorage.setItem('redirectAfterLogin', `/movies/${id}`);
+      router.push('/unauthorized/review_only');
+      return;
+    }
+
+    try {
+      await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}/reviews`,
+        { movieId: id, comment: newReview, rating },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+
+      setNewReview('');
+      localStorage.removeItem('pendingReview');
+      localStorage.removeItem('pendingRating');
+      fetchReviews();
+    } catch (error) {
+      console.error('Erro ao enviar review:', error.message);
+    }
+  }
+
+  if (!movie) return <p className="text-center mt-6">Carregando...</p>;
+
+  return (
+    <div className="container mx-auto p-6 flex flex-col lg:flex-row items-center justify-center min-h-screen">
+      {/* Card do filme */}
+      <Card className="shadow-md transition-transform duration-200 flex flex-col w-full max-w-md lg:max-w-xs lg:mr-8">
+        <CardContent className="p-4 flex flex-col h-full justify-between items-center">
+          <AspectRatio ratio={2 / 3} className="w-full">
+            <img
+              src={movie.url_image}
+              alt={movie.title}
+              className="w-full h-full object-cover rounded-md"
+            />
+          </AspectRatio>
+          <TypographyH1 className="text-2xl font-bold text-center mt-4">{movie.title}</TypographyH1>
+          <TypographyP className="mt-4 text-center">{movie.description}</TypographyP>
+        </CardContent>
+      </Card>
+
+      {/* Seção de reviews */}
+      <div className="w-full max-w-lg lg:flex-1 flex flex-col items-center text-center">
+        <TypographyH4 className="text-lg font-semibold">Reviews</TypographyH4>
+        {reviews.length > 0 ? (
+          <ul className="mt-4 space-y-2 w-full max-w-[500px]">
+            {reviews.map((review, index) => (
+              <li key={index} className="border p-3 rounded-md shadow-sm bg-white flex flex-col">
+                <StarRating rating={review.rating} /> {/* Exibe as estrelas */}
+                <p className="mt-2">{review.comment}</p>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-center mt-2 text-gray-500">Nenhum review ainda.</p>
+        )}
+
+        {/* Formulário de review */}
+        <div className="mt-4 flex flex-col items-center w-full max-w-[500px]">
+          <Input
+            className="w-full mb-2"
+            placeholder="Escreva um review..."
+            value={newReview}
+            onChange={(e) => setNewReview(e.target.value)}
+          />
+
+          {/* Seletor de nota */}
+          <div className="flex items-center mb-4">
+            <span className="mr-2">Nota:</span>
+            {[...Array(5)].map((_, index) => (
+              <Star
+                key={index}
+                className={
+                  index < rating ? 'text-yellow-500 cursor-pointer' : 'text-gray-300 cursor-pointer'
+                }
+                size={24}
+                fill={index < rating ? 'currentColor' : 'none'}
+                onClick={() => setRating(index + 1)}
+              />
+            ))}
+          </div>
+
+          <Button onClick={handleReviewSubmit} className="w-full">
+            Enviar Review
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}"
+
+Eu fui criar um review de teste, e perceni que ela gerou um erro na linha 102, após criar corretamente o review. Essa é a linha:
+"fetchReviews();"
+
+Se eu coloco o mouse em cima, ele dá uma dica:
+"Não foi possível encontrar o nome 'fetchReviews'. Você quis dizer 'setReviews'?ts(2570)
+any"
+
+Eu acho que a 'fetchReviews' não está no escopo de 'handleReviewSubmit'. Eu acho estranho não ter percebido esse problema antes.
+
+
+
+
+
+
+
+
+
+
 
 
 

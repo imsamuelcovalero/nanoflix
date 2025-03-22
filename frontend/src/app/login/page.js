@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { TypographyH1, TypographyP } from "@/components/ui/typography";
 
 export default function LoginPage() {
   const login = useAuthStore((state) => state.login);
@@ -29,9 +30,10 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen">
-      <h1 className="text-2xl font-bold mb-4">Login</h1>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+    <div className="flex flex-col items-center justify-center min-h-screen px-4">
+      <TypographyH1 className="mb-6 text-center">Login</TypographyH1>
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3 w-full max-w-sm">
         <Label>Email ou Username</Label>
         <Input
           type="text"
@@ -39,6 +41,7 @@ export default function LoginPage() {
           value={identifier}
           onChange={(e) => setIdentifier(e.target.value)}
         />
+
         <Label>Senha</Label>
         <Input
           type="password"
@@ -46,9 +49,17 @@ export default function LoginPage() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
+
         <Button type="submit" className="mt-2">
           Entrar
         </Button>
+
+        <TypographyP className="mt-4 text-sm text-center text-gray-600">
+          Ainda não tem uma conta?{" "}
+          <a href="/register" className="text-blue-600 underline hover:text-blue-800">
+            Cadastre-se
+          </a>
+        </TypographyP>
       </form>
     </div>
   );

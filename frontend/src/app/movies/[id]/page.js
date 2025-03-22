@@ -1,19 +1,19 @@
 // src/app/movies/[id]/page.js
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import axios from "axios";
-import { useMoviesStore } from "@/store/moviesStore";
-import { useRouter } from "next/navigation";
-import { useParams } from "next/navigation";
-import { Card, CardContent } from "@/components/ui/card";
-import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { TypographyH1, TypographyH4, TypographyP } from "@/components/ui/typography";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useAuthStore } from "@/store/authStore";
-import StarRating from "@/components/ui/StarRating";
-import { Star } from "lucide-react";
+import { useEffect, useState } from 'react';
+import axios from 'axios';
+import { useMoviesStore } from '@/store/moviesStore';
+import { useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
+import { Card, CardContent } from '@/components/ui/card';
+import { AspectRatio } from '@/components/ui/aspect-ratio';
+import { TypographyH1, TypographyH4, TypographyP } from '@/components/ui/typography';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { useAuthStore } from '@/store/authStore';
+import StarRating from '@/components/ui/StarRating';
+import { Star } from 'lucide-react';
 
 export default function MovieDetailsPage() {
   const params = useParams();
@@ -21,15 +21,15 @@ export default function MovieDetailsPage() {
   const router = useRouter();
   const [movie, setMovie] = useState(null);
   const [reviews, setReviews] = useState([]);
-  const [newReview, setNewReview] = useState("");
+  const [newReview, setNewReview] = useState('');
   const [rating, setRating] = useState(0); // Inicialmente, 5 estrelas
 
   const { getMovieById, fetchMovies, isLoaded } = useMoviesStore();
   const { isAuthenticated, token } = useAuthStore();
 
   useEffect(() => {
-    const savedReview = localStorage.getItem("pendingReview");
-    const savedRating = localStorage.getItem("pendingRating");
+    const savedReview = localStorage.getItem('pendingReview');
+    const savedRating = localStorage.getItem('pendingRating');
 
     if (savedReview) {
       setNewReview(savedReview);
@@ -40,7 +40,19 @@ export default function MovieDetailsPage() {
     }
   }, []);
 
+  async function fetchReviews(movieId) {
+    try {
+      const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/reviews/${movieId}`);
+      console.log('reviewsResponse', response);
+      setReviews(response.data);
+    } catch (error) {
+      console.error('Erro ao buscar reviews:', error.message);
+    }
+  }
+
   useEffect(() => {
+    if (!id) return;
+
     async function fetchMovieDetails() {
       let movieData = getMovieById(id);
 
@@ -52,40 +64,29 @@ export default function MovieDetailsPage() {
       if (movieData) {
         setMovie(movieData);
       } else {
-        console.error("Filme não encontrado");
-        router.push("/movies");
-      }
-    }
-
-    async function fetchReviews() {
-      try {
-        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/reviews/${id}`);
-        console.log("reviewsResponse", response);
-
-        setReviews(response.data);
-      } catch (error) {
-        console.error("Erro ao buscar reviews:", error.message);
+        console.error('Filme não encontrado');
+        router.push('/movies');
       }
     }
 
     fetchMovieDetails();
-    fetchReviews();
+    fetchReviews(id);
   }, [id]);
 
   async function handleReviewSubmit() {
     if (!newReview.trim() || rating === 0) {
-      alert("Por favor, escreva um review e selecione uma nota.");
+      alert('Por favor, escreva um review e selecione uma nota.');
       return;
     }
 
     if (!isAuthenticated) {
       // Salva o review e redireciona para login
-      console.log("Usuário não autenticado. Salvando review para envio após login...");
+      console.log('Usuário não autenticado. Salvando review para envio após login...');
 
-      localStorage.setItem("pendingReview", newReview);
-      localStorage.setItem("pendingRating", rating);
-      localStorage.setItem("redirectAfterLogin", `/movies/${id}`);
-      router.push("/login");
+      localStorage.setItem('pendingReview', newReview);
+      localStorage.setItem('pendingRating', rating);
+      localStorage.setItem('redirectAfterLogin', `/movies/${id}`);
+      router.push('/unauthorized/review_only');
       return;
     }
 
@@ -93,15 +94,15 @@ export default function MovieDetailsPage() {
       await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/reviews`,
         { movieId: id, comment: newReview, rating },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
 
-      setNewReview("");
-      localStorage.removeItem("pendingReview");
-      localStorage.removeItem("pendingRating");
-      fetchReviews();
+      setNewReview('');
+      localStorage.removeItem('pendingReview');
+      localStorage.removeItem('pendingRating');
+      fetchReviews(id);
     } catch (error) {
-      console.error("Erro ao enviar review:", error.message);
+      console.error('Erro ao enviar review:', error.message);
     }
   }
 
@@ -156,10 +157,10 @@ export default function MovieDetailsPage() {
               <Star
                 key={index}
                 className={
-                  index < rating ? "text-yellow-500 cursor-pointer" : "text-gray-300 cursor-pointer"
+                  index < rating ? 'text-yellow-500 cursor-pointer' : 'text-gray-300 cursor-pointer'
                 }
                 size={24}
-                fill={index < rating ? "currentColor" : "none"}
+                fill={index < rating ? 'currentColor' : 'none'}
                 onClick={() => setRating(index + 1)}
               />
             ))}

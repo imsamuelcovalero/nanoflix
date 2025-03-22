@@ -10,7 +10,6 @@ const routes = require('./routes');
 const logger = require('./utils/customLogger');
 // const swaggerFile = require('./doc/swagger.js');
 const uploadPath = path.resolve(__dirname, 'uploads');
-console.log("Servindo arquivos estáticos em:", uploadPath);
 
 const app = express();
 

@@ -12,10 +12,9 @@ const errorMessages = {
   emailInvalid: "400|Email deve ser válido",
   emailUsernameEqual: "400|Email e username não podem ser iguais",
   titleRequired: "400|Title deve existir",
-  directedByRequired: "400|DirectedBy deve existir",
-  releaseYearRequired: "400|ReleaseYear deve existir e ser um ano válido",
+  descriptionRequired: "400|Description deve existir",
   genreRequired: "400|Genre deve existir",
-  actorsRequired: "400|Actors deve existir e conter pelo menos um ator",
+  releaseYearRequired: "400|ReleaseYear deve existir e ser um ano válido",
   urlImageRequired: "400|URL da imagem deve existir",
   movieIdRequired: "400|O ID do filme é obrigatório",
   movieIdInvalid: "400|O ID do filme deve ser um número inteiro",
@@ -119,23 +118,18 @@ const movieSchema = joi.object({
     "string.empty": errorMessages.allFieldsRequired,
     "any.required": errorMessages.titleRequired,
   }),
-  directedBy: joi.string().required().messages({
+  description: joi.string().required().messages({
     "string.empty": errorMessages.allFieldsRequired,
-    "any.required": errorMessages.directedByRequired,
-  }),
-  releaseYear: joi.number().integer().min(1888).required().messages({
-    "number.base": errorMessages.releaseYearRequired,
-    "number.min": "400|ReleaseYear deve ser um ano válido a partir de 1888",
-    "any.required": errorMessages.releaseYearRequired,
+    "any.required": errorMessages.descriptionRequired,
   }),
   genre: joi.string().required().messages({
     "string.empty": errorMessages.allFieldsRequired,
     "any.required": errorMessages.genreRequired,
   }),
-  actors: joi.array().items(joi.string()).min(1).required().messages({
-    "array.base": "400|Actors deve ser uma lista de strings",
-    "array.min": errorMessages.actorsRequired,
-    "any.required": errorMessages.actorsRequired,
+  releaseYear: joi.number().integer().min(1888).required().messages({
+    "number.base": errorMessages.releaseYearRequired,
+    "number.min": "400|ReleaseYear deve ser um ano válido a partir de 1888",
+    "any.required": errorMessages.releaseYearRequired,
   }),
   urlImage: joi.string().uri().required().messages({
     "string.empty": errorMessages.allFieldsRequired,

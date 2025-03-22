@@ -40,7 +40,6 @@ const login = async (userData) => {
 
 const checkUserExists = async (userData) => {
   const { identifier } = userData;
-  logger.info('UserService', 'Verificando se usuário já existe', identifier);
 
   const user = await checkUserExistsBy(identifier);
   if (user) {

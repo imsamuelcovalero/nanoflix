@@ -25,12 +25,13 @@ const getMovieById = async (movieId) => {
 };
 
 const createMovie = async (movieData) => {
-  const { title, directedBy, releaseYear, genre, actors, urlImage } = movieData;
+  const { title, description, releaseYear, genre, urlImage } = movieData;
 
   logger.info("MoviesService", "Tentativa de criação de filme", title);
 
-  // Verifica se já existe um filme com o mesmo título e ano
-  const existingMovie = await Movie.findOne({ where: { title, releaseYear } });
+  const existingMovie = await Movie.findOne({
+    where: { title, release_year: releaseYear },
+  });
 
   if (existingMovie) {
     logger.warn("MoviesService", "Filme já cadastrado", title);
@@ -39,11 +40,10 @@ const createMovie = async (movieData) => {
 
   const newMovie = await Movie.create({
     title,
-    directedBy,
-    releaseYear,
+    description,
+    release_year: releaseYear,
     genre,
-    actors: JSON.stringify(actors), // Salva como JSON string para fácil manipulação
-    urlImage,
+    url_image: urlImage,
   });
 
   if (!newMovie) {
