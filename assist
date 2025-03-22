@@ -242,7 +242,19 @@ Finalizei precisando seguir os passos sugeridos.
 ================================
 20/03
 ================================ 
-Finalizei conseguindo exibir as informações na página de detalhes, agora o próximo passo é testar enviar um review e ver a questão de autorização das páginas, quando foe enviar o review precisa estar logado.
+Finalizei conseguindo exibir as informações na página de detalhes, agora o próximo passo é testar enviar um review e ver a questão de autorização das páginas, quando for enviar o review precisa estar logado.
+
+
+================================
+21/03
+================================ 
+[] - Armazenar também os reviews no estado, evitando mais requisições ao backend. Talvez associar com o objeto do movie referente?
+[] - Se der tempo, fazer header exibindo o nome do usuário, quando logado e footer. 
+
+Finalizei resolvendo a estilização de details, adicionando a lógica do rating e fixando o backend necessário, agora o usuário logado consegue enviar o review. Agora preciso ver a tela de register, a página de admin e a lógica de verificação/segurança. 
+
+Melhora a estilização geral da página de detalhes, aprimora a interação com a página de login quando tentar enviar um review sem estar logado; Aprimora o backend nos pontos que foram necessários para a rota de adição de reviews funcionar corretamente. 
+
 
 
 

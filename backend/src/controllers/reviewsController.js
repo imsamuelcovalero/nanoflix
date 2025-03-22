@@ -6,7 +6,7 @@ const reviewsController = {
   createReview: async (req, res, next) => {
     try {
       const { id: userId } = req.user;
-      logger.info("ReviewsController", "Usuário enviando review", userId);
+      logger.info("ReviewsController", `Usuário ${userId} enviando review`);
 
       const review = await reviewsService.createReview({ ...req.body, userId });
       logger.info("ReviewsController", "Review criada com sucesso", review.id);

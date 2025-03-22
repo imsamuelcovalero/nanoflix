@@ -11,6 +11,9 @@ import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { TypographyH1, TypographyH4, TypographyP } from "@/components/ui/typography";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useAuthStore } from "@/store/authStore";
+import StarRating from "@/components/ui/StarRating";
+import { Star } from "lucide-react";
 
 export default function MovieDetailsPage() {
   const params = useParams();
@@ -19,8 +22,23 @@ export default function MovieDetailsPage() {
   const [movie, setMovie] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [newReview, setNewReview] = useState("");
+  const [rating, setRating] = useState(0); // Inicialmente, 5 estrelas
 
   const { getMovieById, fetchMovies, isLoaded } = useMoviesStore();
+  const { isAuthenticated, token } = useAuthStore();
+
+  useEffect(() => {
+    const savedReview = localStorage.getItem("pendingReview");
+    const savedRating = localStorage.getItem("pendingRating");
+
+    if (savedReview) {
+      setNewReview(savedReview);
+    }
+
+    if (savedRating) {
+      setRating(Number(savedRating)); // Converte string para número
+    }
+  }, []);
 
   useEffect(() => {
     async function fetchMovieDetails() {
@@ -55,15 +73,33 @@ export default function MovieDetailsPage() {
   }, [id]);
 
   async function handleReviewSubmit() {
-    if (!newReview.trim()) return;
+    if (!newReview.trim() || rating === 0) {
+      alert("Por favor, escreva um review e selecione uma nota.");
+      return;
+    }
+
+    if (!isAuthenticated) {
+      // Salva o review e redireciona para login
+      console.log("Usuário não autenticado. Salvando review para envio após login...");
+
+      localStorage.setItem("pendingReview", newReview);
+      localStorage.setItem("pendingRating", rating);
+      localStorage.setItem("redirectAfterLogin", `/movies/${id}`);
+      router.push("/login");
+      return;
+    }
 
     try {
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/reviews`, {
-        movieId: id,
-        content: newReview,
-      });
+      await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}/reviews`,
+        { movieId: id, comment: newReview, rating },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
       setNewReview("");
-      fetchReviews(); // Atualiza os reviews após o envio
+      localStorage.removeItem("pendingReview");
+      localStorage.removeItem("pendingRating");
+      fetchReviews();
     } catch (error) {
       console.error("Erro ao enviar review:", error.message);
     }
@@ -72,10 +108,9 @@ export default function MovieDetailsPage() {
   if (!movie) return <p className="text-center mt-6">Carregando...</p>;
 
   return (
-    <div className="container mx-auto p-6 flex flex-col items-center">
-      <TypographyH1 className="text-4xl font-bold text-center w-full">{movie.title}</TypographyH1>
-
-      <Card className="shadow-md transition-transform duration-200 flex flex-col min-w-[300px] max-w-[500px] mx-auto mt-6">
+    <div className="container mx-auto p-6 flex flex-col lg:flex-row items-center justify-center min-h-screen">
+      {/* Card do filme */}
+      <Card className="shadow-md transition-transform duration-200 flex flex-col w-full max-w-md lg:max-w-xs lg:mr-8">
         <CardContent className="p-4 flex flex-col h-full justify-between items-center">
           <AspectRatio ratio={2 / 3} className="w-full">
             <img
@@ -84,17 +119,20 @@ export default function MovieDetailsPage() {
               className="w-full h-full object-cover rounded-md"
             />
           </AspectRatio>
+          <TypographyH1 className="text-2xl font-bold text-center mt-4">{movie.title}</TypographyH1>
           <TypographyP className="mt-4 text-center">{movie.description}</TypographyP>
         </CardContent>
       </Card>
 
-      <div className="w-full max-w-[500px] mt-8">
-        <TypographyH4 className="text-lg font-semibold text-center">Reviews</TypographyH4>
+      {/* Seção de reviews */}
+      <div className="w-full max-w-lg lg:flex-1 flex flex-col items-center text-center">
+        <TypographyH4 className="text-lg font-semibold">Reviews</TypographyH4>
         {reviews.length > 0 ? (
-          <ul className="mt-4 space-y-2">
+          <ul className="mt-4 space-y-2 w-full max-w-[500px]">
             {reviews.map((review, index) => (
-              <li key={index} className="border p-3 rounded-md shadow-sm">
-                {review.comment}
+              <li key={index} className="border p-3 rounded-md shadow-sm bg-white flex flex-col">
+                <StarRating rating={review.rating} /> {/* Exibe as estrelas */}
+                <p className="mt-2">{review.comment}</p>
               </li>
             ))}
           </ul>
@@ -102,14 +140,34 @@ export default function MovieDetailsPage() {
           <p className="text-center mt-2 text-gray-500">Nenhum review ainda.</p>
         )}
 
-        <div className="mt-4 flex flex-col items-center">
+        {/* Formulário de review */}
+        <div className="mt-4 flex flex-col items-center w-full max-w-[500px]">
           <Input
-            className="w-full max-w-[400px] mb-2"
+            className="w-full mb-2"
             placeholder="Escreva um review..."
             value={newReview}
             onChange={(e) => setNewReview(e.target.value)}
           />
-          <Button onClick={handleReviewSubmit}>Enviar Review</Button>
+
+          {/* Seletor de nota */}
+          <div className="flex items-center mb-4">
+            <span className="mr-2">Nota:</span>
+            {[...Array(5)].map((_, index) => (
+              <Star
+                key={index}
+                className={
+                  index < rating ? "text-yellow-500 cursor-pointer" : "text-gray-300 cursor-pointer"
+                }
+                size={24}
+                fill={index < rating ? "currentColor" : "none"}
+                onClick={() => setRating(index + 1)}
+              />
+            ))}
+          </div>
+
+          <Button onClick={handleReviewSubmit} className="w-full">
+            Enviar Review
+          </Button>
         </div>
       </div>
     </div>

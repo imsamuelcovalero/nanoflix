@@ -3935,6 +3935,778 @@ export default function MovieDetailsPage() {
 }"
 
 
+================================
+21/03
+================================ 
+Certo, tudo parece estar funcionando bem. Agora vamos tentar refinar um pouco a parte visual? Estou enviando 2 imagens anexas, sendo que estou no PC. Eu acho que não é tanto conteúdo assim pra precisar rolar a barra. Podemos talvez colocar a seção de reviews ao lado do card do filme, mas mesmo assim acho que ele poderia ser um pouco menor, ou se achar mais coerente, exibir em baixo mas dando para ver tudo sem ter que rolar a tela (100vh?). 
+
+Analise as sugestões mas tome a decisão você, como especialista em frontend, css e design.
+
+O código html está assim:
+" return (
+    <div className="container mx-auto p-6 flex flex-col items-center">
+      <TypographyH1 className="text-4xl font-bold text-center w-full">{movie.title}</TypographyH1>
+
+      <Card className="shadow-md transition-transform duration-200 flex flex-col min-w-[300px] max-w-[500px] mx-auto mt-6">
+        <CardContent className="p-4 flex flex-col h-full justify-between items-center">
+          <AspectRatio ratio={2 / 3} className="w-full">
+            <img
+              src={movie.url_image}
+              alt={movie.title}
+              className="w-full h-full object-cover rounded-md"
+            />
+          </AspectRatio>
+          <TypographyP className="mt-4 text-center">{movie.description}</TypographyP>
+        </CardContent>
+      </Card>
+
+      <div className="w-full max-w-[500px] mt-8">
+        <TypographyH4 className="text-lg font-semibold text-center">Reviews</TypographyH4>
+        {reviews.length > 0 ? (
+          <ul className="mt-4 space-y-2">
+            {reviews.map((review, index) => (
+              <li key={index} className="border p-3 rounded-md shadow-sm">
+                {review.comment}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-center mt-2 text-gray-500">Nenhum review ainda.</p>
+        )}
+
+        <div className="mt-4 flex flex-col items-center">
+          <Input
+            className="w-full max-w-[400px] mb-2"
+            placeholder="Escreva um review..."
+            value={newReview}
+            onChange={(e) => setNewReview(e.target.value)}
+          />
+          <Button onClick={handleReviewSubmit}>Enviar Review</Button>
+        </div>
+      </div>
+    </div>
+  );"
+
++++
+Certo, acho que visualmente ficou bom. Agora vamos a parte técnica. Como pode ver no erro, o usuário precisa do token/estar logago para enviar o reviews para o backend.:
+"Console Error
+
+
+Erro ao enviar review: "Request failed with status code 401"
+
+src/app/movies/[id]/page.js (68:15) @ handleReviewSubmit
+
+
+  66 |       fetchReviews(); // Atualiza os reviews após o envio
+  67 |     } catch (error) {
+> 68 |       console.error("Erro ao enviar review:", error.message);
+     |               ^
+  69 |     }
+  70 |   }
+  71 |
+Call Stack
+4
+
+Show 3 ignore-listed frame(s)
+handleReviewSubmit
+src/app/movies/[id]/page.js (68:15)"
+
+Qual a melhor solução vẽ aqui, como especialista sênior? Eu penso que se caso ele clicar no botão de enviar e não estiver logado/validado, como agora, deveria exibir uma mensagem condizente e direcionar para a tela de login. Após fazer o login deveria voltar para a mesma tela sem perder as informações que digitou, o que me diz? Aí acho que o texto deveria ficar armazenado no localStorage talvez?
+
+Vou mostrar o código pertinente, para você decidir a melhor abordagem:
+"// src/app/movies/[id]/page.js
+"use client";
+
+import { useEffect, useState } from "react";
+import axios from "axios";
+import { useMoviesStore } from "@/store/moviesStore";
+import { useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
+import { Card, CardContent } from "@/components/ui/card";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
+import { TypographyH1, TypographyH4, TypographyP } from "@/components/ui/typography";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
+export default function MovieDetailsPage() {
+  const params = useParams();
+  const id = params?.id;
+  const router = useRouter();
+  const [movie, setMovie] = useState(null);
+  const [reviews, setReviews] = useState([]);
+  const [newReview, setNewReview] = useState("");
+
+  const { getMovieById, fetchMovies, isLoaded } = useMoviesStore();
+
+  useEffect(() => {
+    async function fetchMovieDetails() {
+      let movieData = getMovieById(id);
+
+      if (!movieData && !isLoaded) {
+        await fetchMovies();
+        movieData = getMovieById(id);
+      }
+
+      if (movieData) {
+        setMovie(movieData);
+      } else {
+        console.error("Filme não encontrado");
+        router.push("/movies");
+      }
+    }
+
+    async function fetchReviews() {
+      try {
+        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/reviews/${id}`);
+        console.log("reviewsResponse", response);
+
+        setReviews(response.data);
+      } catch (error) {
+        console.error("Erro ao buscar reviews:", error.message);
+      }
+    }
+
+    fetchMovieDetails();
+    fetchReviews();
+  }, [id]);
+
+  async function handleReviewSubmit() {
+    if (!newReview.trim()) return;
+
+    try {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/reviews`, {
+        movieId: id,
+        content: newReview,
+      });
+      setNewReview("");
+      fetchReviews(); // Atualiza os reviews após o envio
+    } catch (error) {
+      console.error("Erro ao enviar review:", error.message);
+    }
+  }
+
+  if (!movie) return <p className="text-center mt-6">Carregando...</p>;
+
+  return (
+    <div className="container mx-auto p-6 flex flex-col lg:flex-row items-center justify-center min-h-screen">
+      {/* Card do filme */}
+      <Card className="shadow-md transition-transform duration-200 flex flex-col w-full max-w-md lg:max-w-xs lg:mr-8">
+        <CardContent className="p-4 flex flex-col h-full justify-between items-center">
+          <AspectRatio ratio={2 / 3} className="w-full">
+            <img
+              src={movie.url_image}
+              alt={movie.title}
+              className="w-full h-full object-cover rounded-md"
+            />
+          </AspectRatio>
+          <TypographyH1 className="text-2xl font-bold text-center mt-4">{movie.title}</TypographyH1>
+          <TypographyP className="mt-4 text-center">{movie.description}</TypographyP>
+        </CardContent>
+      </Card>
+
+      {/* Seção de reviews */}
+      <div className="w-full max-w-lg lg:flex-1 flex flex-col items-center text-center">
+        <TypographyH4 className="text-lg font-semibold">Reviews</TypographyH4>
+        {reviews.length > 0 ? (
+          <ul className="mt-4 space-y-2 w-full max-w-[500px]">
+            {reviews.map((review, index) => (
+              <li key={index} className="border p-3 rounded-md shadow-sm bg-white">
+                {review.comment}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-center mt-2 text-gray-500">Nenhum review ainda.</p>
+        )}
+
+        {/* Formulário de review */}
+        <div className="mt-4 flex flex-col items-center w-full max-w-[500px]">
+          <Input
+            className="w-full mb-2"
+            placeholder="Escreva um review..."
+            value={newReview}
+            onChange={(e) => setNewReview(e.target.value)}
+          />
+          <Button onClick={handleReviewSubmit} className="w-full">
+            Enviar Review
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+...
+// src/app/login/page.js
+"use client";
+
+import { useState } from "react";
+import { useAuthStore } from "@/store/authStore";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+export default function LoginPage() {
+  const login = useAuthStore((state) => state.login);
+  const router = useRouter();
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    const success = await login(identifier, password); // Aguarda o retorno do login
+    
+    if (success) {
+      router.push("/movies"); // Redireciona o usuário após login bem-sucedido
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen">
+      <h1 className="text-2xl font-bold mb-4">Login</h1>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <Label>Email ou Username</Label>
+        <Input
+          type="text"
+          placeholder="Digite seu email ou username"
+          value={identifier}
+          onChange={(e) => setIdentifier(e.target.value)}
+        />
+        <Label>Senha</Label>
+        <Input
+          type="password"
+          placeholder="Digite sua senha"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <Button type="submit" className="mt-2">Entrar</Button>
+      </form>
+    </div>
+  );
+}
+
+...
+// src/store/authStore.js
+"use client";
+
+import { create } from "zustand";
+import axios from "axios";
+
+export const useAuthStore = create((set) => ({
+  user: null,
+  token: null,
+  isAuthenticated: false,
+
+  login: async (identifier, password) => {
+    try {
+      console.log("API URL:", process.env.NEXT_PUBLIC_API_URL);
+      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/login`, { identifier, password });
+
+      set({ user: res.data, token: res.data.token, isAuthenticated: true });
+      localStorage.setItem("nanoflix-token", res.data.token);
+
+      return true; // Indica que o login foi bem-sucedido
+    } catch (error) {
+      console.error("Erro ao fazer login:", error.response?.data || error.message);
+      return false; // Indica falha no login
+    }
+  },
+
+  logout: () => {
+    set({ user: null, token: null, isAuthenticated: false });
+    localStorage.removeItem("nanoflix-token");
+  },
+
+  checkAuth: () => {
+    const storedToken = localStorage.getItem("nanoflix-token");
+    if (storedToken) {
+      set({ token: storedToken, isAuthenticated: true });
+    }
+  },
+}));"
+
+Se quiser criar mais arquivos basta me falar.
+
++++
+Ok, conseguimos ir para a login, voltar e enviar a requisição corretamente. Mas tivemos um erro no backend, veja:
+"[*Validation*]: Validating reviewSchema {"movieId":"1","content":"Emocionante!"}
+[*ValidationError*]: Validation failed: O ID do filme é obrigatório Schema: reviewSchema
+[*ErrorMiddleware*]: Unhandled error O ID do filme é obrigatório"
+
+Nossa rota do backend está assim:
+"/* src/routes/reviews.routes.js */
+const { Router } = require("express");
+
+const { decode } = require("../middlewares/tokenFunctions");
+const { validateReview, validateMovieId } = require("../middlewares/validators");
+const { createReview } = require("../controllers/reviewsController");
+const { getReviews } = require("../controllers/reviewsController");
+
+const router = Router();
+
+router.post("/", decode, validateReview, createReview);
+router.get("/:movieId", validateMovieId, getReviews);
+
+module.exports = router;"
+
+E as validações:
+"/* src/middlewares/validators.js */
+const {
+  loginSchema,
+  registerSchema,
+  checkUserSchema,
+  movieSchema,
+  reviewSchema,
+  movieIdSchema,
+} = require("./joiSchemas");
+const CustomError = require("../errors/CustomError");
+const logger = require("../utils/customLogger");
+
+/**
+ * Função auxiliar para extrair código de status e mensagem do erro do Joi.
+ * Se o erro não seguir o padrão "STATUS|Mensagem", assume status 400.
+ */
+const parseJoiError = (error) => {
+  if (!error.message.includes("|")) {
+    return { status: 400, message: error.message };
+  }
+
+  const [status, message] = error.message.split("|");
+  return {
+    status: isNaN(status) ? 400 : Number(status),
+    message,
+  };
+};
+
+/**
+ * Middleware de validação utilizando Joi e a classe CustomError.
+ */
+function validate(schema, schemaName) {
+  return (req, _res, next) => {
+    const isGetRequest = req.method === "GET";
+    const dataToValidate = isGetRequest ? req.params : req.body; // Seleciona dinamicamente
+
+    logger.debug("Validation", `Validating ${schemaName}`, JSON.stringify(dataToValidate));
+
+    const { error } = schema.validate(dataToValidate);
+
+    if (error) {
+      const { status, message } = parseJoiError(error);
+
+      logger.warn("ValidationError", `Validation failed: ${message}`, `Schema: ${schemaName}`);
+
+      return next(new CustomError(status, message));
+    }
+
+    next();
+  };
+}
+
+const validators = {
+  validateLogin: validate(loginSchema, "loginSchema"),
+  validateRegister: validate(registerSchema, "registerSchema"),
+  validateCheckUserExists: validate(checkUserSchema, "checkUserSchema"),
+  validateMovie: validate(movieSchema, "movieSchema"),
+  validateMovieId: validate(movieIdSchema, "movieIdSchema"),
+  validateReview: validate(reviewSchema, "reviewSchema"),
+};
+
+module.exports = validators;
+
+...
+const reviewSchema = joi.object({
+  movie_id: joi.number().integer().required().messages({
+    "number.base": errorMessages.movieIdInvalid,
+    "any.required": errorMessages.movieIdRequired,
+  }),
+  rating: joi.number().integer().min(1).max(5).required().messages({
+    "number.base": errorMessages.ratingRequired,
+    "number.min": errorMessages.ratingMin,
+    "number.max": errorMessages.ratingMax,
+    "any.required": errorMessages.ratingRequired,
+  }),
+  comment: joi.string().optional().allow("").messages({
+    "string.base": errorMessages.commentInvalid,
+  }),
+});"
+
+O que sugere?
+
++++
+Ok, agora percebi que deixamos o rating como obrigatório. Inclusive temos ele na tabela (imagem anexa 1) mas não estamos exibindo nada no front a respeito, como pode ver na imagem anexa 2, e seria legal mostrar umas estrelinhas e tal, visualmente falando. 
+
+Eu acho que tanto poderíamos alterar nosso front para exibir isso, quanto incluir no payload que vai para o backend, e aí precisaríamos de outro input, certo?
+
+Veja o objeto de review como é:
+"data
+: 
+Array(3)
+0
+: 
+comment
+: 
+"Um dos melhores filmes que já assisti! A trama é incrível e a trilha sonora espetacular."
+created_at
+: 
+"2025-03-16T22:59:22.000Z"
+id
+: 
+1
+movie_id
+: 
+1
+rating
+: 
+5
+user_id
+: 
+2"
+
+E como está a página atualmente:
+"// src/app/movies/[id]/page.js
+"use client";
+
+import { useEffect, useState } from "react";
+import axios from "axios";
+import { useMoviesStore } from "@/store/moviesStore";
+import { useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
+import { Card, CardContent } from "@/components/ui/card";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
+import { TypographyH1, TypographyH4, TypographyP } from "@/components/ui/typography";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useAuthStore } from "@/store/authStore";
+
+export default function MovieDetailsPage() {
+  const params = useParams();
+  const id = params?.id;
+  const router = useRouter();
+  const [movie, setMovie] = useState(null);
+  const [reviews, setReviews] = useState([]);
+  const [newReview, setNewReview] = useState("");
+
+  const { getMovieById, fetchMovies, isLoaded } = useMoviesStore();
+  const { isAuthenticated, token } = useAuthStore();
+
+  // Após montagem do componente, carrega o conteúdo do localStorage
+  useEffect(() => {
+    const savedReview = localStorage.getItem("pendingReview");
+    if (savedReview) {
+      setNewReview(savedReview);
+    }
+  }, []);
+
+  useEffect(() => {
+    async function fetchMovieDetails() {
+      let movieData = getMovieById(id);
+
+      if (!movieData && !isLoaded) {
+        await fetchMovies();
+        movieData = getMovieById(id);
+      }
+
+      if (movieData) {
+        setMovie(movieData);
+      } else {
+        console.error("Filme não encontrado");
+        router.push("/movies");
+      }
+    }
+
+    async function fetchReviews() {
+      try {
+        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/reviews/${id}`);
+        console.log("reviewsResponse", response);
+
+        setReviews(response.data);
+      } catch (error) {
+        console.error("Erro ao buscar reviews:", error.message);
+      }
+    }
+
+    fetchMovieDetails();
+    fetchReviews();
+  }, [id]);
+
+  async function handleReviewSubmit() {
+    if (!newReview.trim()) return;
+
+    if (!isAuthenticated) {
+      // Salva o review e redireciona para login
+      console.log("Usuário não autenticado. Salvando review para envio após login...");
+
+      localStorage.setItem("pendingReview", newReview);
+      localStorage.setItem("redirectAfterLogin", `/movies/${id}`);
+      router.push("/login");
+      return;
+    }
+
+    try {
+      await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}/reviews`,
+        { movieId: id, content: newReview },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setNewReview("");
+      localStorage.removeItem("pendingReview"); // Remove o review salvo após envio bem-sucedido
+      fetchReviews();
+    } catch (error) {
+      console.error("Erro ao enviar review:", error.message);
+    }
+  }
+
+  if (!movie) return <p className="text-center mt-6">Carregando...</p>;
+
+  return (
+    <div className="container mx-auto p-6 flex flex-col lg:flex-row items-center justify-center min-h-screen">
+      {/* Card do filme */}
+      <Card className="shadow-md transition-transform duration-200 flex flex-col w-full max-w-md lg:max-w-xs lg:mr-8">
+        <CardContent className="p-4 flex flex-col h-full justify-between items-center">
+          <AspectRatio ratio={2 / 3} className="w-full">
+            <img
+              src={movie.url_image}
+              alt={movie.title}
+              className="w-full h-full object-cover rounded-md"
+            />
+          </AspectRatio>
+          <TypographyH1 className="text-2xl font-bold text-center mt-4">{movie.title}</TypographyH1>
+          <TypographyP className="mt-4 text-center">{movie.description}</TypographyP>
+        </CardContent>
+      </Card>
+
+      {/* Seção de reviews */}
+      <div className="w-full max-w-lg lg:flex-1 flex flex-col items-center text-center">
+        <TypographyH4 className="text-lg font-semibold">Reviews</TypographyH4>
+        {reviews.length > 0 ? (
+          <ul className="mt-4 space-y-2 w-full max-w-[500px]">
+            {reviews.map((review, index) => (
+              <li key={index} className="border p-3 rounded-md shadow-sm bg-white">
+                {review.comment}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-center mt-2 text-gray-500">Nenhum review ainda.</p>
+        )}
+
+        {/* Formulário de review */}
+        <div className="mt-4 flex flex-col items-center w-full max-w-[500px]">
+          <Input
+            className="w-full mb-2"
+            placeholder="Escreva um review..."
+            value={newReview}
+            onChange={(e) => setNewReview(e.target.value)}
+          />
+          <Button onClick={handleReviewSubmit} className="w-full">
+            Enviar Review
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}"
+
++++
+Ok, como você enviou o código avulso, eu não sei se implementei nos locais corretos, vou te mostrar como está todo ele, para que possa revisar:
+"// src/app/movies/[id]/page.js
+"use client";
+
+import { useEffect, useState } from "react";
+import axios from "axios";
+import { useMoviesStore } from "@/store/moviesStore";
+import { useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
+import { Card, CardContent } from "@/components/ui/card";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
+import { TypographyH1, TypographyH4, TypographyP } from "@/components/ui/typography";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useAuthStore } from "@/store/authStore";
+import StarRating from "@/components/ui/StarRating";
+
+export default function MovieDetailsPage() {
+  const params = useParams();
+  const id = params?.id;
+  const router = useRouter();
+  const [movie, setMovie] = useState(null);
+  const [reviews, setReviews] = useState([]);
+  const [newReview, setNewReview] = useState("");
+  const [rating, setRating] = useState(5); // Inicialmente, 5 estrelas
+
+  const { getMovieById, fetchMovies, isLoaded } = useMoviesStore();
+  const { isAuthenticated, token } = useAuthStore();
+
+  // Após montagem do componente, carrega o conteúdo do localStorage
+  useEffect(() => {
+    const savedReview = localStorage.getItem("pendingReview");
+    if (savedReview) {
+      setNewReview(savedReview);
+    }
+  }, []);
+
+  useEffect(() => {
+    async function fetchMovieDetails() {
+      let movieData = getMovieById(id);
+
+      if (!movieData && !isLoaded) {
+        await fetchMovies();
+        movieData = getMovieById(id);
+      }
+
+      if (movieData) {
+        setMovie(movieData);
+      } else {
+        console.error("Filme não encontrado");
+        router.push("/movies");
+      }
+    }
+
+    async function fetchReviews() {
+      try {
+        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/reviews/${id}`);
+        console.log("reviewsResponse", response);
+
+        setReviews(response.data);
+      } catch (error) {
+        console.error("Erro ao buscar reviews:", error.message);
+      }
+    }
+
+    fetchMovieDetails();
+    fetchReviews();
+  }, [id]);
+
+  async function handleReviewSubmit() {
+    if (!newReview.trim()) return;
+
+    if (!isAuthenticated) {
+      // Salva o review e redireciona para login
+      console.log("Usuário não autenticado. Salvando review para envio após login...");
+
+      localStorage.setItem("pendingReview", newReview);
+      localStorage.setItem("redirectAfterLogin", `/movies/${id}`);
+      router.push("/login");
+      return;
+    }
+
+    try {
+      await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}/reviews`,
+        { movieId: id, content: newReview, rating }, // Incluímos o rating aqui
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setNewReview("");
+      localStorage.removeItem("pendingReview"); // Remove o review salvo após envio bem-sucedido
+      fetchReviews();
+    } catch (error) {
+      console.error("Erro ao enviar review:", error.message);
+    }
+  }
+
+  if (!movie) return <p className="text-center mt-6">Carregando...</p>;
+
+  return (
+    <div className="container mx-auto p-6 flex flex-col lg:flex-row items-center justify-center min-h-screen">
+      {/* Card do filme */}
+      <Card className="shadow-md transition-transform duration-200 flex flex-col w-full max-w-md lg:max-w-xs lg:mr-8">
+        <CardContent className="p-4 flex flex-col h-full justify-between items-center">
+          <AspectRatio ratio={2 / 3} className="w-full">
+            <img
+              src={movie.url_image}
+              alt={movie.title}
+              className="w-full h-full object-cover rounded-md"
+            />
+          </AspectRatio>
+          <TypographyH1 className="text-2xl font-bold text-center mt-4">{movie.title}</TypographyH1>
+          <TypographyP className="mt-4 text-center">{movie.description}</TypographyP>
+        </CardContent>
+      </Card>
+
+      {/* Seção de reviews */}
+      <div className="w-full max-w-lg lg:flex-1 flex flex-col items-center text-center">
+        <TypographyH4 className="text-lg font-semibold">Reviews</TypographyH4>
+        {reviews.length > 0 ? (
+          <ul className="mt-4 space-y-2 w-full max-w-[500px]">
+            {reviews.map((review, index) => (
+              <li key={index} className="border p-3 rounded-md shadow-sm bg-white flex flex-col">
+                <StarRating rating={review.rating} /> {/* Exibe as estrelas */}
+                <p className="mt-2">{review.comment}</p>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-center mt-2 text-gray-500">Nenhum review ainda.</p>
+        )}
+
+        {/* Formulário de review */}
+        <div className="mt-4 flex flex-col items-center w-full max-w-[500px]">
+          <Input
+            className="w-full mb-2"
+            placeholder="Escreva um review..."
+            value={newReview}
+            onChange={(e) => setNewReview(e.target.value)}
+          />
+          <Button onClick={handleReviewSubmit} className="w-full">
+            Enviar Review
+          </Button>
+        </div>
+        {/* Input para selecionar a nota */}
+        <div className="flex items-center mb-2">
+          <span className="mr-2">Nota:</span>
+          {[...Array(5)].map((_, index) => (
+            <Star
+              key={index}
+              className={
+                index < rating ? "text-yellow-500 cursor-pointer" : "text-gray-300 cursor-pointer"
+              }
+              size={24}
+              fill={index < rating ? "currentColor" : "none"}
+              onClick={() => setRating(index + 1)}
+            />
+          ))}
+        </div>
+
+        {/* Envio do Review */}
+        <Button onClick={handleReviewSubmit} className="w-full">
+          Enviar Review
+        </Button>
+      </div>
+    </div>
+  );
+}"
+
+E aproveitar corrigir o erro:
+"Unhandled Runtime Error
+
+
+Error: Star is not defined
+
+src/app/movies/[id]/page.js (148:14) @ eval
+
+
+  146 |           <span className="mr-2">Nota:</span>
+  147 |           {[...Array(5)].map((_, index) => (
+> 148 |             <Star
+      |              ^
+  149 |               key={index}
+  150 |               className={
+  151 |                 index < rating ? "text-yellow-500 cursor-pointer" : "text-gray-300 cursor-pointer"
+Call Stack
+4
+
+Show 1 ignore-listed frame(s)
+eval
+src/app/movies/[id]/page.js (148:14)
+Array.map
+<anonymous> (0:0)
+MovieDetailsPage
+src/app/movies/[id]/page.js (147:26)"
 
 
 

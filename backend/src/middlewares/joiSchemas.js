@@ -145,7 +145,7 @@ const movieSchema = joi.object({
 });
 
 const reviewSchema = joi.object({
-  movie_id: joi.number().integer().required().messages({
+  movieId: joi.number().integer().required().messages({
     "number.base": errorMessages.movieIdInvalid,
     "any.required": errorMessages.movieIdRequired,
   }),

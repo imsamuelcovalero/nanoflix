@@ -16,11 +16,15 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     const success = await login(identifier, password); // Aguarda o retorno do login
-    
+
     if (success) {
-      router.push("/movies"); // Redireciona o usuário após login bem-sucedido
+      const redirectPath = localStorage.getItem("redirectAfterLogin") || "/movies";
+      console.log("Redirecting to:", redirectPath);
+      localStorage.removeItem("redirectAfterLogin"); // Remove o redirecionamento após o login
+
+      router.push(redirectPath);
     }
   };
 
@@ -42,9 +46,10 @@ export default function LoginPage() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-        <Button type="submit" className="mt-2">Entrar</Button>
+        <Button type="submit" className="mt-2">
+          Entrar
+        </Button>
       </form>
     </div>
   );
 }
-
