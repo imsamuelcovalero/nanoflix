@@ -257,9 +257,9 @@ Finalizei conseguindo exibir as informações na página de detalhes, agora o pr
 21/03
 ================================ 
 MF = Melhoria Futura
-[MF] - Armazenar também os reviews no estado, evitando mais requisições ao backend. Talvez associar com o objeto do movie referente?
+[]<MF> - Armazenar também os reviews no estado, evitando mais requisições ao backend. Talvez associar com o objeto do movie referente?
     => Melhoria futura, se sobrar tempo.
-[] - Se der tempo, fazer header exibindo o nome do usuário, quando logado e footer. 
+
 
 Finalizei resolvendo a estilização de details, adicionando a lógica do rating e fixando o backend necessário, agora o usuário logado consegue enviar o review. Agora preciso ver a tela de register, a página de admin e a lógica de verificação/segurança. 
 
@@ -310,8 +310,6 @@ src/
 
 [OK] - Resolver o erro da linha 102 de movies/id
 
-[] - Testar rota de admin(movies/new)
-
 +++
 Parei com este commit:
 "feat(Register e Melhorias): Cria a estrutura da rota de registro do front, a página de unauthorized, a página de inserir um novo filme, apenas para admins , melhora a página de detalhes de filmes no front e  inconsistências no backend em relação a inserção de um novo filme."
@@ -321,7 +319,7 @@ Agora preciso ver o item do footer e rodapé e avaliar se tem mais algo que real
 ================================
 23/03
 ================================ 
-[] - Testar a rota movies/new
+[OK] - Testar rota de admin(movies/new)
 
 Para posters dos filmes:
 https://www.themoviedb.org/
@@ -344,6 +342,30 @@ Aqui vai uma sugestão de conteúdo para um novo item icônico:
 +++
 Faz ajustes no redirecionamento de /login quando for um administrador, direcionando para /movies/new; Faz as alterações necessárias na estrutura lógica do front e do backend para que funcione corretamente a inserção de um novo filme, incluindo o envio da imagem.
 
+++++
+[OK] - 🔄 4. Melhorar a Navegação e Estrutura Geral
+
+📌 Objetivo:
+
+    Adicionar links entre as páginas para facilitar a navegação.
+    Criar um layout.js para reutilizar cabeçalho e rodapé.
+    Proteger rotas que exigem login.
+
+📌 O que precisa ser feito?
+✅ Criar um <Header /> e um <Footer />.
+✅ Adicionar next/link nos filmes para navegar para /movies/[id].
+✅ Criar middleware (middleware.ts) para bloquear acesso a rotas privadas.
+
+[OK] - Se der tempo, fazer header exibindo o nome do usuário, quando logado e footer. 
+
++++
+[OK] - Refinar a lógica da Header e a estética da página, pois o footer está muito abaixo.
+    => Quando precisar estar fora da tela tudo bem, mas nem sempre é preciso.
+
+[OK] - Estética do header - texto de login não aparece sem o mouve hover.
+
++++
+Melhora a UI/UX, criando um header e um footer e refinando a disposição dos elementos e a lida com o usário e suas informações, vindas do backend e exibidas no header
 
 
 

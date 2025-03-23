@@ -9,6 +9,7 @@ import { useParams } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { TypographyH1, TypographyH4, TypographyP } from '@/components/ui/typography';
+import PageContainer from '@/components/ui/PageContainer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuthStore } from '@/store/authStore';
@@ -109,7 +110,7 @@ export default function MovieDetailsPage() {
   if (!movie) return <p className="text-center mt-6">Carregando...</p>;
 
   return (
-    <div className="container mx-auto p-6 flex flex-col lg:flex-row items-center justify-center min-h-screen">
+    <PageContainer>
       {/* Card do filme */}
       <Card className="shadow-md transition-transform duration-200 flex flex-col w-full max-w-md lg:max-w-xs lg:mr-8">
         <CardContent className="p-4 flex flex-col h-full justify-between items-center">
@@ -171,6 +172,6 @@ export default function MovieDetailsPage() {
           </Button>
         </div>
       </div>
-    </div>
+    </PageContainer>
   );
 }

@@ -7728,18 +7728,761 @@ export const useMoviesStore = create((set) => ({
   },
 }));"
 
++++++
+Não, vamos manter simples. Eu acho que tem mais uma implementação que é importante para o frontend, pensando em padrão de projetos em geral (e se ver mais algum, que considere essencial, pode apontar). Retomando do conteúdo antigo:
+"
+Conteúdo sugerido por você:
+[ ] - 🔄 4. Melhorar a Navegação e Estrutura Geral
 
+📌 Objetivo:
 
+    Adicionar links entre as páginas para facilitar a navegação.
+    Criar um layout.js para reutilizar cabeçalho e rodapé.
+    Proteger rotas que exigem login.
 
+📌 O que precisa ser feito?
+✅ Criar um <Header /> e um <Footer />.
+✅ Adicionar next/link nos filmes para navegar para /movies/[id].
+✅ Criar middleware (middleware.ts) para bloquear acesso a rotas privadas.
 
+Conteúdo meu:
+[] - Se der tempo, fazer header exibindo o nome do usuário, quando logado e footer."
 
+Como sabe, os itens de links e proteção já estão implementados. Eu acho que é importante um header/footer, com opção de login/logout. Menu de navegação talvez não faça sentido na nossa realidade, só temos basicamente uma página para usuário e outra para admin. 
 
+Acho que exibir o nome do usuário no header pode ser interessante também, com alguma mensagem de boas vindas ou apenas o nome, e caso não esteja logado uma mensagem apropriada para esses casos, mostrando a opção de login/registro.
 
+O que me diz? Quer discutir conceitualmente primeiro?
 
++++
+Concordo com a sugestão, e prefiro com emojis e um pouco mais descontraído. Mas acho que o footer pode ficar algo como:
+```
+© 2025 Nanoflix. Desenvolvido por ImSamuelCovalero   🍿 paixão por filmes.
+```
 
+Lembrando que atualmente já possuímos um arquivo layout.js, que está assim:
+""use client";
 
+import { useEffect } from "react";
+import { useAuthStore } from "@/store/authStore";
+import "@/styles/tailwind.css";
 
+export default function RootLayout({ children }) {
+  const checkAuth = useAuthStore((state) => state.checkAuth);
 
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
+
+  return (
+    <html suppressHydrationWarning lang="en">
+      <body>{children}</body>
+    </html>
+  );
+}"
+
+E um page.js:
+"'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+
+export default function Home() {
+  const router = useRouter();
+
+  useEffect(() => {
+    router.push('/movies'); // Redireciona automaticamente para a listagem de filmes
+  }, []);
+
+  return null;"
+}"
+
+Nosso 'authStore' está assim:
+"// src/store/authStore.js
+"use client";
+
+import { create } from "zustand";
+import axios from "axios";
+
+export const useAuthStore = create((set) => ({
+  user: null,
+  token: null,
+  isAuthenticated: false,
+
+  login: async (identifier, password) => {
+    try {
+      console.log("API URL:", process.env.NEXT_PUBLIC_API_URL);
+      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/login`, { identifier, password });
+
+      set({ user: res.data, token: res.data.token, isAuthenticated: true });
+      localStorage.setItem("nanoflix-token", res.data.token);
+
+      return true; // Indica que o login foi bem-sucedido
+    } catch (error) {
+      console.error("Erro ao fazer login:", error.response?.data || error.message);
+      return false; // Indica falha no login
+    }
+  },
+
+  logout: () => {
+    set({ user: null, token: null, isAuthenticated: false });
+    localStorage.removeItem("nanoflix-token");
+  },
+
+  checkAuth: () => {
+    const storedToken = localStorage.getItem("nanoflix-token");
+    if (storedToken) {
+      set({ token: storedToken, isAuthenticated: true });
+    }
+  },
+}));"
+
+E lembre-se de utilizar ao máximo possível o shadcn, se quiser pode criar componentes que não temos ainda. Você pode ver os que temos na imagem anexa 1.
+
++++
+Certo, agora vamos melhorar um pouco a UI do header? Na imagem 1 você pode ver como ele fica normalmente, sem podermos ver o texto de login e na imagem 2 quando o mouse está em cima.
+
+O código está assim:
+"// src/components/ui/header.jsx
+'use client';
+
+import Link from 'next/link';
+import { useAuthStore } from '@/store/authStore';
+import { Button } from './button';
+import { useRouter } from 'next/navigation';
+
+export default function Header() {
+  const { user, isAuthenticated, logout } = useAuthStore();
+  const router = useRouter();
+
+  const handleLogout = () => {
+    logout();
+    router.push('/login');
+  };
+
+  return (
+    <header className="bg-black text-white py-4 px-6 shadow flex items-center justify-between">
+      <Link href="/movies" className="text-lg font-bold">
+        🎬 Nanoflix
+      </Link>
+      <div className="flex items-center gap-4">
+        {isAuthenticated ? (
+          <>
+            <span className="text-sm">👋 Olá, {user?.name?.split(' ')[0] || 'Usuário'}</span>
+            {user?.role === 'admin' && (
+              <Button variant="outline" onClick={() => router.push('/movies/new')}>
+                ➕ Novo Filme
+              </Button>
+            )}
+            <Button variant="destructive" onClick={handleLogout}>
+              Sair
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button variant="outline" onClick={() => router.push('/login')}>
+              Login
+            </Button>
+            <Button onClick={() => router.push('/register')}>Registrar</Button>
+          </>
+        )}
+      </div>
+    </header>
+  );
+}"
+
++++
+Certo, vamos avançar para o próximo item, que é o de, quando possível, mostrar o header. Como pode ver na imagem anexa 1, não teria motivo para o header naõ estar aparecendo logo que entramos nessa página (/movies/new). Veja pela imagem anexa 2 que precisamos dar o scroll down na página para que ele apareça. Isso deve ocorrer em caso de ter muito conteúdo a página, mas se possível ela deveria exibir o footer sem a necessidade de scroll, concorda comigo?
+
+Aonde acha que seria o caso de atuar aqui?
+
+layout.js está assim:
+"// src/app/layout.js
+'use client';
+
+import { useEffect } from 'react';
+import { useAuthStore } from '@/store/authStore';
+import '@/styles/tailwind.css';
+import Header from '@/components/ui/header';
+import Footer from '@/components/ui/footer';
+
+export default function RootLayout({ children }) {
+  const checkAuth = useAuthStore((state) => state.checkAuth);
+
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
+
+  return (
+    <html suppressHydrationWarning lang="en">
+      <body className="flex flex-col min-h-screen">
+        <Header />
+        <main className="flex-grow">{children}</main>
+        <Footer />
+      </body>
+    </html>
+  );
+}"
+
+E a new está assim:
+"// src/app/movies/new/page.js
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuthStore } from '@/store/authStore';
+import { useMoviesStore } from '@/store/moviesStore';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { TypographyH1, TypographyP } from '@/components/ui/typography';
+import axios from 'axios';
+
+export default function NewMoviePage() {
+  const router = useRouter();
+  const { isAuthenticated, token, user, checkAuth } = useAuthStore();
+  const { setIsLoaded } = useMoviesStore.getState();
+
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    genre: '',
+    releaseYear: '',
+  });
+
+  const [imageFile, setImageFile] = useState(null);
+
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    checkAuth();
+
+    if (!isAuthenticated) {
+      router.push('/unauthorized/admin_only');
+      return;
+    }
+
+    if (user && user.role !== 'admin') {
+      router.push('/movies');
+    }
+  }, [isAuthenticated, user]);
+
+  const handleChange = (e) => {
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleFileChange = (e) => {
+    setImageFile(e.target.files[0]);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    const formDataToSend = new FormData();
+    formDataToSend.append('title', formData.title);
+    formDataToSend.append('description', formData.description);
+    formDataToSend.append('genre', formData.genre);
+    formDataToSend.append('releaseYear', formData.releaseYear);
+    formDataToSend.append('image', imageFile); // 'image' será o nome do campo no backend
+
+    try {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/movies`, formDataToSend, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      setIsLoaded(false);
+      router.push('/movies');
+    } catch (err) {
+      console.error('Erro ao criar filme:', err.response?.data || err.message);
+      setError(err.response?.data?.message || 'Erro ao criar filme.');
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen px-4">
+      <TypographyH1 className="mb-6 text-center">Novo Filme</TypographyH1>
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3 w-full max-w-md">
+        <Label>Título</Label>
+        <Input name="title" value={formData.title} onChange={handleChange} required />
+
+        <Label>Descrição</Label>
+        <Input name="description" value={formData.description} onChange={handleChange} required />
+
+        <Label>Ano de Lançamento</Label>
+        <Input
+          type="number"
+          name="releaseYear"
+          value={formData.releaseYear}
+          onChange={handleChange}
+          required
+        />
+
+        <Label>Gênero</Label>
+        <Input name="genre" value={formData.genre} onChange={handleChange} required />
+
+        <Label>Imagem</Label>
+        <Input type="file" accept="image/*" onChange={handleFileChange} required />
+
+        {error && <TypographyP className="text-red-500 text-sm">{error}</TypographyP>}
+
+        <Button type="submit" className="mt-2">
+          Cadastrar Filme
+        </Button>
+      </form>
+    </div>
+  );
+}"
+
+Mas acho que esse deveria ser meio que um comportamento padrão das páginas, o que me diz?
+
+++++
+Ok, resolvemos parte do problema, apenas acho que deveria estar com um espaço maior entre o header e o primeiro elemento da página, não concorda? Estamos assim:
+"return (
+    <PageContainer>
+      <TypographyH1 className="mb-6 text-center">Novo Filme</TypographyH1>
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3 w-full max-w-md">
+        <Label>Título</Label>
+        <Input name="title" value={formData.title} onChange={handleChange} required />
+
+        <Label>Descrição</Label>
+        <Input name="description" value={formData.description} onChange={handleChange} required />
+
+        <Label>Ano de Lançamento</Label>
+        <Input
+          type="number"
+          name="releaseYear"
+          value={formData.releaseYear}
+          onChange={handleChange}
+          required
+        />
+
+        <Label>Gênero</Label>
+        <Input name="genre" value={formData.genre} onChange={handleChange} required />
+
+        <Label>Imagem</Label>
+        <Input type="file" accept="image/*" onChange={handleFileChange} required />
+
+        {error && <TypographyP className="text-red-500 text-sm">{error}</TypographyP>}
+
+        <Button type="submit" className="mt-2">
+          Cadastrar Filme
+        </Button>
+      </form>
+    </PageContainer>
+  );
+
+...
+// src/components/ui/PageContainer.jsx
+export default function PageContainer({ children }) {
+  return <div className="flex flex-col items-center justify-center flex-grow px-4">{children}</div>;
+}"
+
++++
+Ok, apliquei a sugestão do 'PageContainer' e parece estar funcionando bem agora. O próximo item é entender o motivo desse comportamento que acabou de acontecer. Eu fiz login como administrador (o que pode ser verificado pela imagem anexa 2), porém por algum movito user estava null na página de /login, como pode ser visto na imagem anexa 1. O código está assim:
+"// src/app/login/page.js
+'use client';
+
+import { useState } from 'react';
+import { useAuthStore } from '@/store/authStore';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { TypographyH1, TypographyP } from '@/components/ui/typography';
+
+export default function LoginPage() {
+  const login = useAuthStore((state) => state.login);
+  const user = useAuthStore((state) => state.user);
+  const router = useRouter();
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    const success = await login(identifier, password); // Aguarda o retorno do login
+
+    if (success) {
+      console.log('user:', user);
+
+      const redirectPath =
+        user?.role === 'admin'
+          ? '/movies/new'
+          : localStorage.getItem('redirectAfterLogin') || '/movies';
+
+      console.log('Redirecting to:', redirectPath);
+      localStorage.removeItem('redirectAfterLogin'); // Remove o redirecionamento após o login
+
+      router.push(redirectPath);
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen px-4">
+      <TypographyH1 className="mb-6 text-center">Login</TypographyH1>
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3 w-full max-w-sm">
+        <Label>Email ou Username</Label>
+        <Input
+          type="text"
+          placeholder="Digite seu email ou username"
+          value={identifier}
+          onChange={(e) => setIdentifier(e.target.value)}
+        />
+
+        <Label>Senha</Label>
+        <Input
+          type="password"
+          placeholder="Digite sua senha"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+
+        <Button type="submit" className="mt-2">
+          Entrar
+        </Button>
+
+        <TypographyP className="mt-4 text-sm text-center text-gray-600">
+          Ainda não tem uma conta?{' '}
+          <a href="/register" className="text-blue-600 underline hover:text-blue-800">
+            Cadastre-se
+          </a>
+        </TypographyP>
+      </form>
+    </div>
+  );
+}"
+
+++++
+Ok, vamos tentar um último refinamento antes de encerrarmos essa parte do front. Veja na imagem anexa 1 como está a estética da página. Eu acho que o margin top não é o ideal nesse caso, acho que esse conteúdo deveria estar centralizado verticalmente na tela, da mesma forma que está horizontalmente, ficaria mais harmônico. Não concorda? Nosso '' está assim:
+"// src/components/ui/PageContainer.jsx
+export default function PageContainer({ children }) {
+  return (
+    <div className="flex flex-col items-center justify-center flex-grow px-4 mt-10 pb-10">
+      {children}
+    </div>
+  );
+}"
+
+E a page:
+"return (
+    <PageContainer>
+      <TypographyH1 className="mb-6 text-center">Novo Filme</TypographyH1>
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3 w-full max-w-md">
+        <Label>Título</Label>
+        <Input name="title" value={formData.title} onChange={handleChange} required />
+
+        <Label>Descrição</Label>
+        <Input name="description" value={formData.description} onChange={handleChange} required />
+
+        <Label>Ano de Lançamento</Label>
+        <Input
+          type="number"
+          name="releaseYear"
+          value={formData.releaseYear}
+          onChange={handleChange}
+          required
+        />
+
+        <Label>Gênero</Label>
+        <Input name="genre" value={formData.genre} onChange={handleChange} required />
+
+        <Label>Imagem</Label>
+        <Input type="file" accept="image/*" onChange={handleFileChange} required />
+
+        {error && <TypographyP className="text-red-500 text-sm">{error}</TypographyP>}
+
+        <Button type="submit" className="mt-2">
+          Cadastrar Filme
+        </Button>
+      </form>
+    </PageContainer>
+  );"
+
+Estou usando ela como exemplo, mas acho que a ideia vale para todas, mas /movies está com a exibição correta para a realidade dela, como pode ver na imagem anexa 2. Seu código está assim:
+"return (
+    <PageContainer>
+      {/* Título centralizado corretamente com maior espaçamento */}
+      <TypographyH1 className="text-4xl font-bold text-center w-full">Filmes</TypographyH1>
+
+      {/* Ajuste o espaçamento com mt-8 no grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 mt-12">
+        {movies.map((movie) => (
+          <Link key={movie.id} href={`/movies/${movie.id}`} passHref className="cursor-pointer">
+            <Card className="shadow-md transition-transform duration-200 hover:scale-105 flex flex-col min-h-[260px] min-w-[220px] max-h-[360px] mx-auto">
+              <CardContent className="p-4 flex flex-col h-full justify-between items-center">
+                {/* Reduzindo um pouco a altura máxima da imagem */}
+                <AspectRatio ratio={2 / 3} className="w-full max-h-[260px]">
+                  <img
+                    src={movie.url_image}
+                    alt={movie.title}
+                    className="w-full h-full object-cover rounded-md"
+                  />
+                </AspectRatio>
+
+                {/* Ajuste do título para alinhar no centro do card */}
+                <TypographyH4 className="text-md font-medium mt-4 text-center w-full">
+                  {movie.title}
+                </TypographyH4>
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
+      </div>
+    </PageContainer>
+  );"
+
++++
+Certo, o próximo refinamento que precisamos fazer é quando, da tela '/movies/new', a qual o admin está logado (imagem anexa 1) e eu mudo a url na mão para '/movies', user fica de alguma forma null (imagem anexa 2), e continua problema se eu volto também na mão a url para '/movies/new' (imagem anexa 3). E por último, veja que /login também fica problemática, por é como se o usuário estivesse ainda logado, como pode ver no header com a opção de 'Sair' habilitada. 
+
+O header está assim:
+"// src/components/ui/header.jsx
+'use client';
+
+import Link from 'next/link';
+import { useAuthStore } from '@/store/authStore';
+import { Button } from './button';
+import { useRouter } from 'next/navigation';
+
+export default function Header() {
+  const { user, isAuthenticated, logout } = useAuthStore();
+  console.log('user:', user);
+
+  const router = useRouter();
+
+  const handleLogout = () => {
+    logout();
+    router.push('/login');
+  };
+
+  return (
+    <header className="bg-black text-white py-4 px-6 shadow flex items-center justify-between">
+      <Link href="/movies" className="text-lg font-bold">
+        🎬 Nanoflix
+      </Link>
+      <div className="flex items-center gap-4">
+        {isAuthenticated ? (
+          <>
+            <span className="text-sm">👋 Olá, {user?.name?.split(' ')[0] || 'Usuário'}</span>
+            {user?.role === 'admin' && (
+              <Button variant="outline" onClick={() => router.push('/movies/new')}>
+                ➕ Novo Filme
+              </Button>
+            )}
+            <Button variant="destructive" onClick={handleLogout}>
+              Sair
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button
+              variant="secondary"
+              className="text-black bg-white hover:bg-gray-100"
+              onClick={() => router.push('/login')}
+            >
+              Login
+            </Button>
+            <Button onClick={() => router.push('/register')}>Registrar</Button>
+          </>
+        )}
+      </div>
+    </header>
+  );
+}"
+
++++
+Ok, estamos com algum mal funcionamento. Primeiro por estar dando looping de requisição, o que pode ser visto na imagem anexa 1, e segundo por não ter mostrado o nome do usuário no header, mas esse eu não consegui tirar foto pois fiquei com medo de travar. O código de 'authStore' está assim:
+"// src/store/authStore.js
+'use client';
+
+import { create } from 'zustand';
+import axios from 'axios';
+
+export const useAuthStore = create((set) => ({
+  user: null,
+  token: null,
+  isAuthenticated: false,
+
+  login: async (identifier, password) => {
+    try {
+      console.log('API URL:', process.env.NEXT_PUBLIC_API_URL);
+      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/login`, {
+        identifier,
+        password,
+      });
+
+      set({ user: res.data, token: res.data.token, isAuthenticated: true });
+      localStorage.setItem('nanoflix-token', res.data.token);
+
+      return true; // Indica que o login foi bem-sucedido
+    } catch (error) {
+      console.error('Erro ao fazer login:', error.response?.data || error.message);
+      return false; // Indica falha no login
+    }
+  },
+
+  logout: () => {
+    set({ user: null, token: null, isAuthenticated: false });
+    localStorage.removeItem('nanoflix-token');
+  },
+
+  checkAuth: async () => {
+    const storedToken = localStorage.getItem('nanoflix-token');
+    if (storedToken) {
+      set({ token: storedToken, isAuthenticated: true });
+
+      try {
+        const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/login/me`, {
+          headers: {
+            Authorization: `Bearer ${storedToken}`,
+          },
+        });
+
+        set({ user: res.data });
+      } catch (err) {
+        console.error('Erro ao recuperar usuário com token:', err.message);
+        // Remove token inválido
+        localStorage.removeItem('nanoflix-token');
+        set({ token: null, user: null, isAuthenticated: false });
+      }
+    }
+  },
+}));"
+
+E do header:
+"// src/components/ui/header.jsx
+'use client';
+
+import Link from 'next/link';
+import { useAuthStore } from '@/store/authStore';
+import { Button } from './button';
+import { useRouter } from 'next/navigation';
+
+export default function Header() {
+  const { user, isAuthenticated, logout } = useAuthStore();
+  console.log('user:', user);
+
+  const router = useRouter();
+
+  const handleLogout = () => {
+    logout();
+    router.push('/login');
+  };
+
+  return (
+    <header className="bg-black text-white py-4 px-6 shadow flex items-center justify-between">
+      <Link href="/movies" className="text-lg font-bold">
+        🎬 Nanoflix
+      </Link>
+      <div className="flex items-center gap-4">
+        {isAuthenticated ? (
+          <>
+            <span className="text-sm">👋 Olá, {user?.name?.split(' ')[0] || 'Usuário'}</span>
+            {user?.role === 'admin' && (
+              <Button variant="outline" onClick={() => router.push('/movies/new')}>
+                ➕ Novo Filme
+              </Button>
+            )}
+            <Button variant="destructive" onClick={handleLogout}>
+              Sair
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button
+              variant="secondary"
+              className="text-black bg-white hover:bg-gray-100"
+              onClick={() => router.push('/login')}
+            >
+              Login
+            </Button>
+            <Button onClick={() => router.push('/register')}>Registrar</Button>
+          </>
+        )}
+      </div>
+    </header>
+  );
+}"
+
++++
+Ok, uma última questão. Sabe o motivo de estar exibindo apenas o primeiro nome do valor 'name'? Você pode ver na imagem anexa 1 como está sendo exibido, e na imagem anexa 2 o conteúdo que ele está recebendo do backend.
+
+Lembrando que o header está assim:
+"// src/components/ui/header.jsx
+'use client';
+
+import Link from 'next/link';
+import { useAuthStore } from '@/store/authStore';
+import { Button } from './button';
+import { useRouter } from 'next/navigation';
+
+export default function Header() {
+  const { user, isAuthenticated, logout } = useAuthStore();
+  console.log('user:', user);
+
+  const router = useRouter();
+
+  const handleLogout = () => {
+    logout();
+    router.push('/login');
+  };
+
+  return (
+    <header className="bg-black text-white py-4 px-6 shadow flex items-center justify-between">
+      <Link href="/movies" className="text-lg font-bold">
+        🎬 Nanoflix
+      </Link>
+      <div className="flex items-center gap-4">
+        {isAuthenticated ? (
+          <>
+            <span className="text-sm">
+              👋 {user?.name ? `Olá, ${user.name.split(' ')[0]}` : 'Carregando...'}
+            </span>
+            {user?.role === 'admin' && (
+              <Button variant="outline" onClick={() => router.push('/movies/new')}>
+                ➕ Novo Filme
+              </Button>
+            )}
+            <Button variant="destructive" onClick={handleLogout}>
+              Sair
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button
+              variant="secondary"
+              className="text-black bg-white hover:bg-gray-100"
+              onClick={() => router.push('/login')}
+            >
+              Login
+            </Button>
+            <Button onClick={() => router.push('/register')}>Registrar</Button>
+          </>
+        )}
+      </div>
+    </header>
+  );
+}"
+
++++
+Ok, eu optei por deixar da forma que estava mesmo. Agora para os próximos passos, quero que me ajudar a definir uma prioridade de ação pois o tempo está quase acabando para entregar o teste técnico. Eu vejo que temos 4 itens faltantes:
+ - Subir o projeto para o gitHub.
+    => Esse é fácil, já iniciei o git dentro, basta criar o projeto e lá e dar o push, não se incomode com isso.
+
+ - Hospedagem (sendo que é backend com Node.js e MySQL e front com Next.js).
+
+ - Documentação 
+
+ - Testes
+
+Me ajude a decidir qual é o prioritário e que devo iniciar, e se sobrar tempo qual escolher em seguida. 
 
 
 

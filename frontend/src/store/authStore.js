@@ -1,8 +1,10 @@
 // src/store/authStore.js
-"use client";
+'use client';
 
-import { create } from "zustand";
-import axios from "axios";
+import { create } from 'zustand';
+import axios from 'axios';
+
+let hasCheckedAuth = false;
 
 export const useAuthStore = create((set) => ({
   user: null,
@@ -11,28 +13,49 @@ export const useAuthStore = create((set) => ({
 
   login: async (identifier, password) => {
     try {
-      console.log("API URL:", process.env.NEXT_PUBLIC_API_URL);
-      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/login`, { identifier, password });
+      console.log('API URL:', process.env.NEXT_PUBLIC_API_URL);
+      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/login`, {
+        identifier,
+        password,
+      });
 
       set({ user: res.data, token: res.data.token, isAuthenticated: true });
-      localStorage.setItem("nanoflix-token", res.data.token);
+      localStorage.setItem('nanoflix-token', res.data.token);
 
       return true; // Indica que o login foi bem-sucedido
     } catch (error) {
-      console.error("Erro ao fazer login:", error.response?.data || error.message);
+      console.error('Erro ao fazer login:', error.response?.data || error.message);
       return false; // Indica falha no login
     }
   },
 
   logout: () => {
     set({ user: null, token: null, isAuthenticated: false });
-    localStorage.removeItem("nanoflix-token");
+    localStorage.removeItem('nanoflix-token');
   },
 
-  checkAuth: () => {
-    const storedToken = localStorage.getItem("nanoflix-token");
+  checkAuth: async () => {
+    if (hasCheckedAuth) return; // <-- Impede chamadas múltiplas
+    hasCheckedAuth = true;
+
+    const storedToken = localStorage.getItem('nanoflix-token');
     if (storedToken) {
       set({ token: storedToken, isAuthenticated: true });
+
+      try {
+        const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/login/me`, {
+          headers: {
+            Authorization: `Bearer ${storedToken}`,
+          },
+        });
+
+        set({ user: res.data });
+      } catch (err) {
+        console.error('Erro ao recuperar usuário com token:', err.message);
+        // Remove token inválido
+        localStorage.removeItem('nanoflix-token');
+        set({ token: null, user: null, isAuthenticated: false });
+      }
     }
   },
 }));

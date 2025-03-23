@@ -1,13 +1,14 @@
 // src/app/movies/page.js
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import axios from "axios";
-import { useMoviesStore } from "@/store/moviesStore";
-import { Card, CardContent } from "@/components/ui/card";
-import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { TypographyH1, TypographyH4 } from "@/components/ui/typography";
-import Link from "next/link";
+import { useEffect, useState } from 'react';
+import axios from 'axios';
+import { useMoviesStore } from '@/store/moviesStore';
+import { Card, CardContent } from '@/components/ui/card';
+import { AspectRatio } from '@/components/ui/aspect-ratio';
+import { TypographyH1, TypographyH4 } from '@/components/ui/typography';
+import PageContainer from '@/components/ui/PageContainer';
+import Link from 'next/link';
 
 export default function MoviesPage() {
   const { movies, setMovies, isLoaded } = useMoviesStore();
@@ -18,10 +19,10 @@ export default function MoviesPage() {
 
       try {
         const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/movies`);
-        console.log("moviesResponse", response);
+        console.log('moviesResponse', response);
         setMovies(response.data);
       } catch (error) {
-        console.error("Erro ao buscar filmes:", error.message);
+        console.error('Erro ao buscar filmes:', error.message);
       }
     }
 
@@ -29,7 +30,7 @@ export default function MoviesPage() {
   }, [isLoaded, setMovies]);
 
   return (
-    <div className="container mx-auto p-6 flex flex-col items-center">
+    <PageContainer>
       {/* Título centralizado corretamente com maior espaçamento */}
       <TypographyH1 className="text-4xl font-bold text-center w-full">Filmes</TypographyH1>
 
@@ -57,6 +58,6 @@ export default function MoviesPage() {
           </Link>
         ))}
       </div>
-    </div>
+    </PageContainer>
   );
 }

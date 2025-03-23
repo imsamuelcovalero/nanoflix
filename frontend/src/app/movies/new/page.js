@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { TypographyH1, TypographyP } from '@/components/ui/typography';
+import PageContainer from '@/components/ui/PageContainer';
 import axios from 'axios';
 
 export default function NewMoviePage() {
@@ -76,7 +77,7 @@ export default function NewMoviePage() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen px-4">
+    <PageContainer>
       <TypographyH1 className="mb-6 text-center">Novo Filme</TypographyH1>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-3 w-full max-w-md">
@@ -107,6 +108,6 @@ export default function NewMoviePage() {
           Cadastrar Filme
         </Button>
       </form>
-    </div>
+    </PageContainer>
   );
 }

@@ -19,9 +19,10 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const success = await login(identifier, password); // Aguarda o retorno do login
+    const success = await login(identifier, password);
 
     if (success) {
+      const { user } = useAuthStore.getState(); // <-- Pega o estado atualizado aqui
       console.log('user:', user);
 
       const redirectPath =
@@ -30,7 +31,7 @@ export default function LoginPage() {
           : localStorage.getItem('redirectAfterLogin') || '/movies';
 
       console.log('Redirecting to:', redirectPath);
-      localStorage.removeItem('redirectAfterLogin'); // Remove o redirecionamento após o login
+      localStorage.removeItem('redirectAfterLogin');
 
       router.push(redirectPath);
     }

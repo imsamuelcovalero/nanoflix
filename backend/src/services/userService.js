@@ -35,7 +35,7 @@ const login = async (userData) => {
   const token = tokenValidator.generateToken(user);
   logger.info('UserService', 'Login bem-sucedido', identifier);
 
-  return { token, id: user.id, email: user.email, username: user.username, role: user.role };
+  return { token, id: user.id, name: user.name, username: user.username, email: user.email, role: user.role };
 };
 
 const checkUserExists = async (userData) => {
@@ -87,7 +87,7 @@ const verifyUser = async (userId) => {
     throw boom.notFound('User not found');
   }
 
-  return { id: user.id, username: user.username, email: user.email, role: user.role };
+  return { id: user.id, name: user.name, username: user.username, email: user.email, role: user.role };
 };
 
 module.exports = {
