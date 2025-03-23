@@ -1,4 +1,5 @@
 /* src/middlewares/validators.js */
+const boom = require('@hapi/boom');
 const {
   loginSchema,
   registerSchema,
@@ -35,6 +36,12 @@ function validate(schema, schemaName) {
     const dataToValidate = isGetRequest ? req.params : req.body; // Seleciona dinamicamente
 
     logger.debug("Validation", `Validating ${schemaName}`, JSON.stringify(dataToValidate));
+
+    // Verifica se a imagem foi enviada quando necessário
+    if (schemaName === 'movieSchema' && !req.file) {
+      logger.warn('ValidationError', 'Imagem não enviada no formulário');
+      return next(boom.badRequest('400|A imagem é obrigatória'));
+    }
 
     const { error } = schema.validate(dataToValidate);
 

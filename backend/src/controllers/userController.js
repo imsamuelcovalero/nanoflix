@@ -6,10 +6,10 @@ const logger = require('../utils/customLogger');
 const userController = {
   login: async (req, res, next) => {
     try {
-      logger.info('UserController', 'Tentativa de login', req.body.email);
+      logger.info('UserController', 'Tentativa de login', req.body.identifier);
       const result = await userService.login(req.body);
 
-      logger.info('UserController', 'Login bem-sucedido', req.body.email);
+      logger.info('UserController', 'Login bem-sucedido', req.body.identifier);
       return res.status(200).json(result);
     } catch (err) {
       logger.error('UserController', 'Erro no login', err.message);

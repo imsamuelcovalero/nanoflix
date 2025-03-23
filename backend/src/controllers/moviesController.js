@@ -36,6 +36,9 @@ const moviesController = {
   createMovie: async (req, res, next) => {
     try {
       logger.info("MoviesController", "Tentativa de criação de filme", req.body.title);
+      const imagePath = `${req.protocol}://${req.get('host')}/images/${req.file.filename}`;
+
+      req.body.urlImage = imagePath;
       const newMovie = await movieService.createMovie(req.body);
 
       logger.info("MoviesController", "Filme criado com sucesso", newMovie.title);

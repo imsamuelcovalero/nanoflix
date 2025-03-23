@@ -131,11 +131,6 @@ const movieSchema = joi.object({
     "number.min": "400|ReleaseYear deve ser um ano válido a partir de 1888",
     "any.required": errorMessages.releaseYearRequired,
   }),
-  urlImage: joi.string().uri().required().messages({
-    "string.empty": errorMessages.allFieldsRequired,
-    "string.uri": "400|URL da imagem deve ser válida",
-    "any.required": errorMessages.urlImageRequired,
-  }),
 });
 
 const reviewSchema = joi.object({

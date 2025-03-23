@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
+import { useMoviesStore } from '@/store/moviesStore';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -13,14 +14,16 @@ import axios from 'axios';
 export default function NewMoviePage() {
   const router = useRouter();
   const { isAuthenticated, token, user, checkAuth } = useAuthStore();
+  const { setIsLoaded } = useMoviesStore.getState();
 
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     genre: '',
     releaseYear: '',
-    urlImage: '',
   });
+
+  const [imageFile, setImageFile] = useState(null);
 
   const [error, setError] = useState('');
 
@@ -41,17 +44,30 @@ export default function NewMoviePage() {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
+  const handleFileChange = (e) => {
+    setImageFile(e.target.files[0]);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
+    const formDataToSend = new FormData();
+    formDataToSend.append('title', formData.title);
+    formDataToSend.append('description', formData.description);
+    formDataToSend.append('genre', formData.genre);
+    formDataToSend.append('releaseYear', formData.releaseYear);
+    formDataToSend.append('image', imageFile); // 'image' será o nome do campo no backend
+
     try {
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/movies`, formData, {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/movies`, formDataToSend, {
         headers: {
           Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
         },
       });
 
+      setIsLoaded(false);
       router.push('/movies');
     } catch (err) {
       console.error('Erro ao criar filme:', err.response?.data || err.message);
@@ -82,8 +98,8 @@ export default function NewMoviePage() {
         <Label>Gênero</Label>
         <Input name="genre" value={formData.genre} onChange={handleChange} required />
 
-        <Label>URL da Imagem</Label>
-        <Input name="urlImage" value={formData.urlImage} onChange={handleChange} required />
+        <Label>Imagem</Label>
+        <Input type="file" accept="image/*" onChange={handleFileChange} required />
 
         {error && <TypographyP className="text-red-500 text-sm">{error}</TypographyP>}
 

@@ -1,22 +1,23 @@
 // src/store/moviesStore.js
 
-"use client";
+'use client';
 
-import { create } from "zustand";
-import axios from "axios";
+import { create } from 'zustand';
+import axios from 'axios';
 
 export const useMoviesStore = create((set) => ({
   movies: [],
   isLoaded: false,
 
   setMovies: (movies) => set({ movies, isLoaded: true }),
+  setIsLoaded: (value) => set({ isLoaded: value }),
 
   fetchMovies: async () => {
     try {
       const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/movies`);
       set({ movies: response.data, isLoaded: true });
     } catch (error) {
-      console.error("Erro ao buscar filmes:", error.message);
+      console.error('Erro ao buscar filmes:', error.message);
     }
   },
 

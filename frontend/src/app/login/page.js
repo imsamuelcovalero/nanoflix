@@ -1,19 +1,20 @@
 // src/app/login/page.js
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useAuthStore } from "@/store/authStore";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { TypographyH1, TypographyP } from "@/components/ui/typography";
+import { useState } from 'react';
+import { useAuthStore } from '@/store/authStore';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { TypographyH1, TypographyP } from '@/components/ui/typography';
 
 export default function LoginPage() {
   const login = useAuthStore((state) => state.login);
+  const user = useAuthStore((state) => state.user);
   const router = useRouter();
-  const [identifier, setIdentifier] = useState("");
-  const [password, setPassword] = useState("");
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -21,9 +22,15 @@ export default function LoginPage() {
     const success = await login(identifier, password); // Aguarda o retorno do login
 
     if (success) {
-      const redirectPath = localStorage.getItem("redirectAfterLogin") || "/movies";
-      console.log("Redirecting to:", redirectPath);
-      localStorage.removeItem("redirectAfterLogin"); // Remove o redirecionamento após o login
+      console.log('user:', user);
+
+      const redirectPath =
+        user?.role === 'admin'
+          ? '/movies/new'
+          : localStorage.getItem('redirectAfterLogin') || '/movies';
+
+      console.log('Redirecting to:', redirectPath);
+      localStorage.removeItem('redirectAfterLogin'); // Remove o redirecionamento após o login
 
       router.push(redirectPath);
     }
@@ -55,7 +62,7 @@ export default function LoginPage() {
         </Button>
 
         <TypographyP className="mt-4 text-sm text-center text-gray-600">
-          Ainda não tem uma conta?{" "}
+          Ainda não tem uma conta?{' '}
           <a href="/register" className="text-blue-600 underline hover:text-blue-800">
             Cadastre-se
           </a>

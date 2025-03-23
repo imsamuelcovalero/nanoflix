@@ -1266,7 +1266,7 @@ module.exports = {
 Corrija o que for necessário.
 
 ++++
-Certo, agora para agilizar o nosso processo, eu vou trazer/reaptoveitar muito conteúdo que desenvolvi em outros projetos para reutilizar aqui, mas quero que você atue como verificador de boa lógica e boas práticas, e aponte caso veja alguma má prática ou ponto de melhoria. 
+Certo, agora para agilizar o nosso processo, eu vou trazer/reaproveitar muito conteúdo que desenvolvi em outros projetos para reutilizar aqui, mas quero que você atue como verificador de boa lógica e boas práticas, e aponte caso veja alguma má prática ou ponto de melhoria. 
 
 Apesar de saber hoje que existam talvez formas melhores de validar os dados do front, eu utilizei joi anteriormente, e até por ser node.js puro, acho que ele ainda pode satistazer as necessidades, além de que não quero perder tempo demais utilizando outra ferramenta sendo que essa já está praticamente pronta. 
 
@@ -6948,6 +6948,785 @@ any"
 Eu acho que a 'fetchReviews' não está no escopo de 'handleReviewSubmit'. Eu acho estranho não ter percebido esse problema antes.
 
 
+================================
+23/03
+================================ 
+Agora precisamos fixar o page.js principal, que deve estar faltando algo. Eu tinha deixado o código que direciona para /movies comentado, e agora descomentei. Estamos assim:
+"import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+
+export default function Home() {
+  const router = useRouter();
+
+  useEffect(() => {
+    router.push('/movies'); // Redireciona automaticamente para a listagem de filmes
+  }, []);"
+
+E o erro:
+"
+Build Error
+
+Error:   × You're importing a component that needs `useEffect`. This React hook only works in a client component. To fix, mark the file (or its parent) with the `"use client"` directive.
+
+./src/app/page.js
+
+Error:   × You're importing a component that needs `useEffect`. This React hook only works in a client component. To fix, mark the file (or its parent) with the `"use client"` directive.
+  │ 
+  │  Learn more: https://nextjs.org/docs/app/api-reference/directives/use-client
+  │ 
+  │ 
+   ╭─[/media/samuel/dados-linux13/testes-tecnicos/nanoflix/frontend/src/app/page.js:2:1]
+ 1 │ import { Button } from '@/components/ui/button';
+ 2 │ import { useEffect } from 'react';
+   ·          ─────────
+ 3 │ import { useRouter } from 'next/navigation';
+ 4 │ 
+ 5 │ export default function Home() {
+   ╰────
+  × You're importing a component that needs `useRouter`. This React hook only works in a client component. To fix, mark the file (or its parent) with the `"use client"` directive.
+  │ 
+  │  Learn more: https://nextjs.org/docs/app/api-reference/directives/use-client
+  │ 
+  │ 
+   ╭─[/media/samuel/dados-linux13/testes-tecnicos/nanoflix/frontend/src/app/page.js:3:1]
+ 1 │ import { Button } from '@/components/ui/button';
+ 2 │ import { useEffect } from 'react';
+ 3 │ import { useRouter } from 'next/navigation';
+   ·          ─────────
+ 4 │ 
+ 5 │ export default function Home() {
+ 6 │   const router = useRouter();
+   ╰────"
+
++++
+Certo, agora vamos dar uma pausa no progresso geral para refinar algumas coisas. Na página de login, eu estou querendo melhorar o redicerionamento quando for admin logando, e para isso quero verificar o role. Eu estou vendo o arquivo 'authStore.js', que pelo que estou vendo é responsável por fazer a comunicação com o backend:
+"// src/store/authStore.js
+"use client";
+
+import { create } from "zustand";
+import axios from "axios";
+
+export const useAuthStore = create((set) => ({
+  user: null,
+  token: null,
+  isAuthenticated: false,
+
+  login: async (identifier, password) => {
+    try {
+      console.log("API URL:", process.env.NEXT_PUBLIC_API_URL);
+      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/login`, { identifier, password });
+
+      set({ user: res.data, token: res.data.token, isAuthenticated: true });
+      localStorage.setItem("nanoflix-token", res.data.token);
+
+      return true; // Indica que o login foi bem-sucedido
+    } catch (error) {
+      console.error("Erro ao fazer login:", error.response?.data || error.message);
+      return false; // Indica falha no login
+    }
+  },
+
+  logout: () => {
+    set({ user: null, token: null, isAuthenticated: false });
+    localStorage.removeItem("nanoflix-token");
+  },
+
+  checkAuth: () => {
+    const storedToken = localStorage.getItem("nanoflix-token");
+    if (storedToken) {
+      set({ token: storedToken, isAuthenticated: true });
+    }
+  },
+}));"
+
+Eu quero saber como faço para acessar esse 'user' que temos nele, pois penso que através dele podemos pegar a informação de que precisamos. 
+
+Veja o trecho relevante da login:
+"// src/app/login/page.js
+'use client';
+
+import { useState } from 'react';
+import { useAuthStore } from '@/store/authStore';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { TypographyH1, TypographyP } from '@/components/ui/typography';
+
+export default function LoginPage() {
+  const login = useAuthStore((state) => state.login);
+  const router = useRouter();
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    const success = await login(identifier, password); // Aguarda o retorno do login
+
+    if (success) {
+      const redirectPath = localStorage.getItem('redirectAfterLogin') || '/movies';
+      console.log('Redirecting to:', redirectPath);
+      localStorage.removeItem('redirectAfterLogin'); // Remove o redirecionamento após o login
+
+      router.push(redirectPath);
+    }
+  };"
+
+A minha ideia aqui é verificar se o role é 'admin' e nesse caso alterar o 'redirectPath' para '/movies/new'. O que me diz?
+
++++
+Ok, agora quero fazer um teste na rota e preciso de sua ajuda para 2 coisas:
+A imagem anexa 1 mostra como está a página.
+1. Sugerir os conteúdo para uma nova inserção, seguindo a linha de filmes icônicos
+2. Sugerir como podemos proceder na questão da imagem. Atualmente temos 'url_image' no banco, como pode ver na imagem anexa 2, mas é porque temos uma pasta com as imagens lá. Nesse caso da criação de um novo movie, pelo front, não sei se faz sentido enviarmos uma url. Teria que enviar o arquivo .jpg? Qual é o procedimento padrão nesses casos? Queremos ir pelo caminho mais rápido e prático, se for dar muito trabalho teremos que ignorar essa parte. 
+
+O código da página está assim:
+"// src/app/movies/new/page.js
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuthStore } from '@/store/authStore';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { TypographyH1, TypographyP } from '@/components/ui/typography';
+import axios from 'axios';
+
+export default function NewMoviePage() {
+  const router = useRouter();
+  const { isAuthenticated, token, user, checkAuth } = useAuthStore();
+
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    genre: '',
+    releaseYear: '',
+    urlImage: '',
+  });
+
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    checkAuth();
+
+    if (!isAuthenticated) {
+      router.push('/unauthorized/admin_only');
+      return;
+    }
+
+    if (user && user.role !== 'admin') {
+      router.push('/movies');
+    }
+  }, [isAuthenticated, user]);
+
+  const handleChange = (e) => {
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    try {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/movies`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      router.push('/movies');
+    } catch (err) {
+      console.error('Erro ao criar filme:', err.response?.data || err.message);
+      setError(err.response?.data?.message || 'Erro ao criar filme.');
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen px-4">
+      <TypographyH1 className="mb-6 text-center">Novo Filme</TypographyH1>
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3 w-full max-w-md">
+        <Label>Título</Label>
+        <Input name="title" value={formData.title} onChange={handleChange} required />
+
+        <Label>Descrição</Label>
+        <Input name="description" value={formData.description} onChange={handleChange} required />
+
+        <Label>Ano de Lançamento</Label>
+        <Input
+          type="number"
+          name="releaseYear"
+          value={formData.releaseYear}
+          onChange={handleChange}
+          required
+        />
+
+        <Label>Gênero</Label>
+        <Input name="genre" value={formData.genre} onChange={handleChange} required />
+
+        <Label>URL da Imagem</Label>
+        <Input name="urlImage" value={formData.urlImage} onChange={handleChange} required />
+
+        {error && <TypographyP className="text-red-500 text-sm">{error}</TypographyP>}
+
+        <Button type="submit" className="mt-2">
+          Cadastrar Filme
+        </Button>
+      </form>
+    </div>
+  );
+}"
+
++++
+Ok, eu acho que já fiz as alterações necessárias no front, quando comecei a seguir os passos do backend, logo na instalação do multer deu um erro, veja:
+"samuel@holydesk-linux:/media/samuel/dados-linux13/testes-tecnicos/nanoflix/backend$ npm install multer
+npm error code ERESOLVE
+npm error ERESOLVE could not resolve
+npm error
+npm error While resolving: eslint-config-standard@17.1.0
+npm error Found: eslint@9.22.0
+npm error node_modules/eslint
+npm error   peer eslint@"^6.0.0 || ^7.0.0 || >=8.0.0" from @eslint-community/eslint-utils@4.5.0
+npm error   node_modules/@eslint-community/eslint-utils
+npm error     @eslint-community/eslint-utils@"^4.2.0" from eslint@9.22.0
+npm error     @eslint-community/eslint-utils@"^4.2.0" from eslint@8.57.1
+npm error     node_modules/eslint-plugin-editorconfig/node_modules/eslint
+npm error       eslint@"^8.0.1" from eslint-plugin-editorconfig@4.0.2
+npm error       node_modules/eslint-plugin-editorconfig
+npm error         eslint-plugin-editorconfig@"4.0.2" from eslint-config-trybe-backend@2.1.0
+npm error         node_modules/eslint-config-trybe-backend
+npm error   peer eslint@">=4.19.1" from eslint-plugin-es@3.0.1
+npm error   node_modules/eslint-plugin-es
+npm error     eslint-plugin-es@"^3.0.0" from eslint-plugin-node@11.1.0
+npm error     node_modules/eslint-plugin-node
+npm error       dev eslint-plugin-node@"^11.1.0" from the root project
+npm error   4 more (eslint-plugin-mocha, eslint-utils, eslint-plugin-node, the root project)
+npm error
+npm error Could not resolve dependency:
+npm error peer eslint@"^8.0.1" from eslint-config-standard@17.1.0
+npm error node_modules/eslint-config-standard
+npm error   dev eslint-config-standard@"^17.1.0" from the root project
+npm error
+npm error Conflicting peer dependency: eslint@8.57.1
+npm error node_modules/eslint
+npm error   peer eslint@"^8.0.1" from eslint-config-standard@17.1.0
+npm error   node_modules/eslint-config-standard
+npm error     dev eslint-config-standard@"^17.1.0" from the root project
+npm error
+npm error Fix the upstream dependency conflict, or retry
+npm error this command with --force or --legacy-peer-deps
+npm error to accept an incorrect (and potentially broken) dependency resolution.
+npm error
+npm error
+npm error For a full report see:
+npm error /home/samuel/.npm/_logs/2025-03-23T16_18_05_180Z-eresolve-report.txt
+npm error A complete log of this run can be found in: /home/samuel/.npm/_logs/2025-03-23T16_18_05_180Z-debug-0.log
+samuel@holydesk-linux:/media/samuel/dados-linux13/testes-tecnicos/nanoflix/backend$ "
+
+Nossas dependências da pasta backend estão assim:
+""dependencies": {
+    "@hapi/boom": "^10.0.1",
+    "bcrypt": "^5.1.1",
+    "chalk": "^4.1.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "http-status-codes": "^2.3.0",
+    "joi": "^17.13.3",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
+    "mysql2": "^3.13.0",
+    "sequelize": "^6.37.6",
+    "winston": "^3.17.0"
+  },
+  "devDependencies": {
+    "chai": "^5.2.0",
+    "chai-as-promised": "^8.0.1",
+    "chai-http": "^5.1.1",
+    "eslint": "^9.22.0",
+    "eslint-config-standard": "^17.1.0",
+    "eslint-config-trybe-backend": "2.1.0",
+    "eslint-plugin-node": "^11.1.0",
+    "express-async-errors": "^3.1.1",
+    "mocha": "^11.1.0",
+    "nodemon": "^3.1.9",
+    "nyc": "^17.1.0",
+    "sequelize-cli": "^6.6.2",
+    "sinon": "^19.0.2",
+    "supertest": "^7.0.0",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1"
+  }"
+
++++
+Deu certo a instalação com sua sugestão, obrigado. Agora quero que revise o que eu já fiz no backend, e me sugira o que estiver errado ou faltando. 
+
+Primeiro o middleware criado:
+"// src/middlewares/uploadMiddleware.js
+const multer = require('multer');
+const path = require('path');
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'src/uploads/');
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname);
+    const base = path.basename(file.originalname, ext).replace(/\s+/g, '_').toLowerCase();
+    cb(null, `${base}_${uniqueSuffix}${ext}`);
+  },
+});
+
+const upload = multer({ storage });
+
+module.exports = upload;"
+
+Depois a rota:
+"/* src/routes/movies.routes.js */
+const { Router } = require("express");
+
+const { getMovies, getMovieById, createMovie } = require("../controllers/moviesController");
+const { validateMovie, validateMovieId } = require("../middlewares/validators");
+const { decode, authorize } = require("../middlewares/tokenFunctions");
+const upload = require('../middlewares/uploadMiddleware');
+
+const router = Router();
+
+router.get("/", getMovies);
+router.get("/:movieId", validateMovieId, getMovieById);
+router.post("/", decode, authorize(["admin"]), validateMovie, upload.single('image'), createMovie);
+
+module.exports = router;"
+
+Aí antes de avançarmos para a controller, veja se ainda faz sentido o schema antigo, tendo em vista a alteração, eu sei que o front agora envia 'image':
+"// Esquema para inserir um novo movie
+const movieSchema = joi.object({
+  title: joi.string().required().messages({
+    "string.empty": errorMessages.allFieldsRequired,
+    "any.required": errorMessages.titleRequired,
+  }),
+  description: joi.string().required().messages({
+    "string.empty": errorMessages.allFieldsRequired,
+    "any.required": errorMessages.descriptionRequired,
+  }),
+  genre: joi.string().required().messages({
+    "string.empty": errorMessages.allFieldsRequired,
+    "any.required": errorMessages.genreRequired,
+  }),
+  releaseYear: joi.number().integer().min(1888).required().messages({
+    "number.base": errorMessages.releaseYearRequired,
+    "number.min": "400|ReleaseYear deve ser um ano válido a partir de 1888",
+    "any.required": errorMessages.releaseYearRequired,
+  }),
+  urlImage: joi.string().uri().required().messages({
+    "string.empty": errorMessages.allFieldsRequired,
+    "string.uri": "400|URL da imagem deve ser válida",
+    "any.required": errorMessages.urlImageRequired,
+  }),
+});"
+
+Veja como ficou o front:
+"const formDataToSend = new FormData();
+    formDataToSend.append('title', formData.title);
+    formDataToSend.append('description', formData.description);
+    formDataToSend.append('genre', formData.genre);
+    formDataToSend.append('releaseYear', formData.releaseYear);
+    formDataToSend.append('image', imageFile); // 'image' será o nome do campo no backend
+
+    try {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/movies`, formDataToSend, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+      });"
+
++++
+Como seria a implementação da sua sugestão?:
+"Em vez disso, você pode validar se o arquivo foi enviado em req.file, manualmente no middleware validateMovie:
+
+if (!req.file) {
+  return next(boom.badRequest('400|A imagem é obrigatória'));
+}"
+
+Ela deveria estar aqui?
+" * Middleware de validação utilizando Joi e a classe CustomError.
+ */
+function validate(schema, schemaName) {
+  return (req, _res, next) => {
+    const isGetRequest = req.method === "GET";
+    const dataToValidate = isGetRequest ? req.params : req.body; // Seleciona dinamicamente
+
+    logger.debug("Validation", `Validating ${schemaName}`, JSON.stringify(dataToValidate));
+
+    const { error } = schema.validate(dataToValidate);
+
+    if (error) {
+      const { status, message } = parseJoiError(error);
+
+      logger.warn("ValidationError", `Validation failed: ${message}`, `Schema: ${schemaName}`);
+
+      return next(new CustomError(status, message));
+    }
+
+    next();
+  };
+}"
+
+Não seria talvez melhor importar o boom no 'uploadMiddleware.js' e chamá-la em caso de não existir req.file? Estamos assim:
+"// src/middlewares/uploadMiddleware.js
+const multer = require('multer');
+const path = require('path');
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'src/uploads/');
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname);
+    const base = path.basename(file.originalname, ext).replace(/\s+/g, '_').toLowerCase();
+    cb(null, `${base}_${uniqueSuffix}${ext}`);
+  },
+});
+
+const upload = multer({ storage });
+
+module.exports = upload;"
+
+Até pq o middleware de validação será chamado após o 'uploadMiddleware.js'.
+
+++++
+Certo, parece que resolvemos a parte dos middlewares então. Vamos avançar para a controller e service. Veja o que eu já fiz e o que falta ser feito:
+"createMovie: async (req, res, next) => {
+    try {
+      logger.info("MoviesController", "Tentativa de criação de filme", req.body.title);
+      const imagePath = `${req.protocol}://${req.get('host')}/images/${req.file.filename}`;
+      const newMovie = await movieService.createMovie(req.body);
+
+      logger.info("MoviesController", "Filme criado com sucesso", newMovie.title);
+      return res.status(201).json(newMovie);
+    } catch (err) {
+      logger.error("MoviesController", "Erro ao criar filme", err.message);
+      next(err);
+    }
+  },
+
+...
+const createMovie = async (movieData) => {
+  const { title, description, releaseYear, genre, urlImage } = movieData;
+
+  logger.info("MoviesService", "Tentativa de criação de filme", title);
+
+  const existingMovie = await Movie.findOne({
+    where: { title, release_year: releaseYear },
+  });
+
+  if (existingMovie) {
+    logger.warn("MoviesService", "Filme já cadastrado", title);
+    throw boom.conflict("Movie already exists");
+  }
+
+  const newMovie = await Movie.create({
+    title,
+    description,
+    release_year: releaseYear,
+    genre,
+    url_image: urlImage,
+  });
+
+  if (!newMovie) {
+    logger.error("MoviesService", "Erro ao criar filme", title);
+    throw boom.internal("Failed to create movie");
+  }
+
+  logger.info("MoviesService", "Filme criado com sucesso", title);
+  return newMovie;
+};"
+
++++
+Ok, o fluxo funcionou muito bem e inserimos um novo filme. A única coisa que penso que poderia melhorar, é que ele direcionou para '/movies' após fazer o post mas ela não atualizou sozinha os filmes, eu tive que dar um f5, e aí sim apareceu o item novo. 
+
+A movies/new está assim:
+"// src/app/movies/new/page.js
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuthStore } from '@/store/authStore';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { TypographyH1, TypographyP } from '@/components/ui/typography';
+import axios from 'axios';
+
+export default function NewMoviePage() {
+  const router = useRouter();
+  const { isAuthenticated, token, user, checkAuth } = useAuthStore();
+
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    genre: '',
+    releaseYear: '',
+  });
+
+  const [imageFile, setImageFile] = useState(null);
+
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    checkAuth();
+
+    if (!isAuthenticated) {
+      router.push('/unauthorized/admin_only');
+      return;
+    }
+
+    if (user && user.role !== 'admin') {
+      router.push('/movies');
+    }
+  }, [isAuthenticated, user]);
+
+  const handleChange = (e) => {
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleFileChange = (e) => {
+    setImageFile(e.target.files[0]);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    const formDataToSend = new FormData();
+    formDataToSend.append('title', formData.title);
+    formDataToSend.append('description', formData.description);
+    formDataToSend.append('genre', formData.genre);
+    formDataToSend.append('releaseYear', formData.releaseYear);
+    formDataToSend.append('image', imageFile); // 'image' será o nome do campo no backend
+
+    try {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/movies`, formDataToSend, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      router.push('/movies');
+    } catch (err) {
+      console.error('Erro ao criar filme:', err.response?.data || err.message);
+      setError(err.response?.data?.message || 'Erro ao criar filme.');
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen px-4">
+      <TypographyH1 className="mb-6 text-center">Novo Filme</TypographyH1>
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3 w-full max-w-md">
+        <Label>Título</Label>
+        <Input name="title" value={formData.title} onChange={handleChange} required />
+
+        <Label>Descrição</Label>
+        <Input name="description" value={formData.description} onChange={handleChange} required />
+
+        <Label>Ano de Lançamento</Label>
+        <Input
+          type="number"
+          name="releaseYear"
+          value={formData.releaseYear}
+          onChange={handleChange}
+          required
+        />
+
+        <Label>Gênero</Label>
+        <Input name="genre" value={formData.genre} onChange={handleChange} required />
+
+        <Label>Imagem</Label>
+        <Input type="file" accept="image/*" onChange={handleFileChange} required />
+
+        {error && <TypographyP className="text-red-500 text-sm">{error}</TypographyP>}
+
+        <Button type="submit" className="mt-2">
+          Cadastrar Filme
+        </Button>
+      </form>
+    </div>
+  );
+}"
+
+e a /movies está assim:
+"// src/app/movies/page.js
+"use client";
+
+import { useEffect, useState } from "react";
+import axios from "axios";
+import { useMoviesStore } from "@/store/moviesStore";
+import { Card, CardContent } from "@/components/ui/card";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
+import { TypographyH1, TypographyH4 } from "@/components/ui/typography";
+import Link from "next/link";
+
+export default function MoviesPage() {
+  const { movies, setMovies, isLoaded } = useMoviesStore();
+
+  useEffect(() => {
+    async function fetchMovies() {
+      if (isLoaded) return; // Se já carregou, evita nova requisição
+
+      try {
+        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/movies`);
+        console.log("moviesResponse", response);
+        setMovies(response.data);
+      } catch (error) {
+        console.error("Erro ao buscar filmes:", error.message);
+      }
+    }
+
+    fetchMovies();
+  }, [isLoaded, setMovies]);
+
+  return (
+    <div className="container mx-auto p-6 flex flex-col items-center">
+      {/* Título centralizado corretamente com maior espaçamento */}
+      <TypographyH1 className="text-4xl font-bold text-center w-full">Filmes</TypographyH1>
+
+      {/* Ajuste o espaçamento com mt-8 no grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 mt-12">
+        {movies.map((movie) => (
+          <Link key={movie.id} href={`/movies/${movie.id}`} passHref className="cursor-pointer">
+            <Card className="shadow-md transition-transform duration-200 hover:scale-105 flex flex-col min-h-[260px] min-w-[220px] max-h-[360px] mx-auto">
+              <CardContent className="p-4 flex flex-col h-full justify-between items-center">
+                {/* Reduzindo um pouco a altura máxima da imagem */}
+                <AspectRatio ratio={2 / 3} className="w-full max-h-[260px]">
+                  <img
+                    src={movie.url_image}
+                    alt={movie.title}
+                    className="w-full h-full object-cover rounded-md"
+                  />
+                </AspectRatio>
+
+                {/* Ajuste do título para alinhar no centro do card */}
+                <TypographyH4 className="text-md font-medium mt-4 text-center w-full">
+                  {movie.title}
+                </TypographyH4>
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}"
+
+Acho que talvez se inserir o novo item no moviesStore além de apenas direcionar para a /movies, mas penso que o ideal é a informação vir mesmo do backend, nesse caso. Porém deixo com vocẽ a abaliação e decisão.
+
++++
+Então ficamos assim:
+"import { useMoviesStore } from '@/store/moviesStore';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { TypographyH1, TypographyP } from '@/components/ui/typography';
+import axios from 'axios';
+
+export default function NewMoviePage() {
+  const router = useRouter();
+  const { isAuthenticated, token, user, checkAuth } = useAuthStore();
+  const { setIsLoaded } = useMoviesStore.getState();
+
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    genre: '',
+    releaseYear: '',
+  });
+
+  const [imageFile, setImageFile] = useState(null);
+
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    checkAuth();
+
+    if (!isAuthenticated) {
+      router.push('/unauthorized/admin_only');
+      return;
+    }
+
+    if (user && user.role !== 'admin') {
+      router.push('/movies');
+    }
+  }, [isAuthenticated, user]);
+
+  const handleChange = (e) => {
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleFileChange = (e) => {
+    setImageFile(e.target.files[0]);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    const formDataToSend = new FormData();
+    formDataToSend.append('title', formData.title);
+    formDataToSend.append('description', formData.description);
+    formDataToSend.append('genre', formData.genre);
+    formDataToSend.append('releaseYear', formData.releaseYear);
+    formDataToSend.append('image', imageFile); // 'image' será o nome do campo no backend
+
+    try {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/movies`, formDataToSend, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      setIsLoaded(false);
+      router.push('/movies');
+    } catch (err) {
+      console.error('Erro ao criar filme:', err.response?.data || err.message);
+      setError(err.response?.data?.message || 'Erro ao criar filme.');
+    }
+  };"
+
+E 'moviesStore':
+"// src/store/moviesStore.js
+
+"use client";
+
+import { create } from "zustand";
+import axios from "axios";
+
+export const useMoviesStore = create((set) => ({
+  movies: [],
+  isLoaded: false,
+
+  setMovies: (movies) => set({ movies, isLoaded: true }),
+
+  fetchMovies: async () => {
+    try {
+      const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/movies`);
+      set({ movies: response.data, isLoaded: true });
+    } catch (error) {
+      console.error("Erro ao buscar filmes:", error.message);
+    }
+  },
+
+  getMovieById: (id) => {
+    return useMoviesStore.getState().movies.find((movie) => movie.id === Number(id)) || null;
+  },
+}));"
 
 
 

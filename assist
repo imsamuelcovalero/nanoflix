@@ -312,7 +312,37 @@ src/
 
 [] - Testar rota de admin(movies/new)
 
++++
+Parei com este commit:
+"feat(Register e Melhorias): Cria a estrutura da rota de registro do front, a página de unauthorized, a página de inserir um novo filme, apenas para admins , melhora a página de detalhes de filmes no front e  inconsistências no backend em relação a inserção de um novo filme."
 
+Agora preciso ver o item do footer e rodapé e avaliar se tem mais algo que realmente precisa ser feito.
+
+================================
+23/03
+================================ 
+[] - Testar a rota movies/new
+
+Para posters dos filmes:
+https://www.themoviedb.org/
+
++++
+Aqui vai uma sugestão de conteúdo para um novo item icônico:
+
+    Título: Forrest Gump
+
+    Descrição: A história de um homem comum com uma vida extraordinária, que presencia eventos marcantes da história dos EUA.
+
+    Gênero: Drama
+
+    Ano: 1994
+
+    Imagem (nome): forrest_gump.jpg
+
+    URL da imagem: http://localhost:3001/images/forrest_gump.jpg
+
++++
+Faz ajustes no redirecionamento de /login quando for um administrador, direcionando para /movies/new; Faz as alterações necessárias na estrutura lógica do front e do backend para que funcione corretamente a inserção de um novo filme, incluindo o envio da imagem.
 
 
 
