@@ -2,7 +2,7 @@
 
 O __Nanoflix__ é uma aplicação fullstack para gerenciamento e visualização de filmes, desenvolvida com __Next.js (frontend)__, __Node.js + Express (backend)__ e __MySQL__ como banco de dados.
 
-Foi criado para um teste técnico com foco em boas práticas, autenticação, upload de imagem, criação e listagem de itens, além de controle de acesso por papel (admin/usuário).
+O projeto foi criado como parte de um teste técnico com foco em boas práticas de desenvolvimento, autenticação JWT, upload de imagens, controle de acesso baseado em papéis (admin/usuário), e uma experiência visual agradável e funcional tanto para administradores quanto usuários comuns.
 
 ## Sumário
 
@@ -28,7 +28,7 @@ Foi criado para um teste técnico com foco em boas práticas, autenticação, up
 
 <!-- Adicione a URL da imagem aqui -->
 
-![Project-Private-Media](https://github.com/imsamuelcovalero/Project-Private-Media/assets/98184355/6dfdf1eb-c93b-4a6e-a2eb-1050d60d9f9c)
+![Nanoflix Preview]([https://github.com/imsamuelcovalero/Project-Private-Media/assets/98184355/6dfdf1eb-c93b-4a6e-a2eb-1050d60d9f9c](https://github.com/user-attachments/assets/90d3b175-5a37-4af5-bf68-094aef9d8e82))
 
 </div>
 
