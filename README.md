@@ -28,7 +28,7 @@ O projeto foi criado como parte de um teste técnico com foco em boas práticas 
 
 <!-- Adicione a URL da imagem aqui -->
 
-![Nanoflix Preview]([https://github.com/user-attachments/assets/90d3b175-5a37-4af5-bf68-094aef9d8e82])
+![Nanoflix Preview](https://github.com/user-attachments/assets/90d3b175-5a37-4af5-bf68-094aef9d8e82)
 
 </div>
 
