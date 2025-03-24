@@ -1,10 +1,10 @@
 /* src/services/userService.js */
 const bcrypt = require('bcrypt');
-const { User } = require('../database/models'); // Corrigido para Sequelize
+const { User } = require('../database/models');
 const tokenValidator = require('../middlewares/tokenFunctions');
 const boom = require('@hapi/boom');
 const logger = require('../utils/customLogger');
-const { Op } = require('sequelize'); // Sequelize operador OR
+const { Op } = require('sequelize');
 
 const checkUserExistsBy = async (identifier) => {
   logger.info('UserService', 'Verificando existência de usuário', identifier);

@@ -27,9 +27,9 @@ module.exports = (sequelize) => {
       email: {
         type: DataTypes.STRING,
         allowNull: false,
-        unique: true, // Garantir que não haja e-mails duplicados
+        unique: true,
         validate: {
-          isEmail: true, // Validação automática para e-mails
+          isEmail: true,
         },
       },
       password: {
@@ -39,15 +39,15 @@ module.exports = (sequelize) => {
       role: {
         type: DataTypes.STRING,
         allowNull: false,
-        defaultValue: 'user', // Pode ser 'admin' ou 'user'
+        defaultValue: 'user',
       },
     },
     {
       sequelize,
       modelName: 'User',
-      tableName: 'users', // Definindo explicitamente o nome da tabela
-      underscored: true, // Converte camelCase para snake_case no banco
-      timestamps: true, // Habilita createdAt e updatedAt automaticamente
+      tableName: 'users',
+      underscored: true,
+      timestamps: true,
     }
   );
 

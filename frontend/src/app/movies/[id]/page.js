@@ -23,7 +23,7 @@ export default function MovieDetailsPage() {
   const [movie, setMovie] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [newReview, setNewReview] = useState('');
-  const [rating, setRating] = useState(0); // Inicialmente, 5 estrelas
+  const [rating, setRating] = useState(0);
 
   const { getMovieById, fetchMovies, isLoaded } = useMoviesStore();
   const { isAuthenticated, token } = useAuthStore();
@@ -37,7 +37,7 @@ export default function MovieDetailsPage() {
     }
 
     if (savedRating) {
-      setRating(Number(savedRating)); // Converte string para número
+      setRating(Number(savedRating));
     }
   }, []);
 

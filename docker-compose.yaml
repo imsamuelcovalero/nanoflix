@@ -1,6 +1,25 @@
 version: '3.9'
 
 services:
+
+  frontend:
+    container_name: nanoflix_frontend
+    build: ./frontend
+    ports:
+      - 3000:3000
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    restart: always
+    env_file:
+      - ./frontend/.env
+    depends_on:
+      - backend
+    networks:
+      - nanoflix_network_backend
+      - nanoflix_network_frontend
+
   backend:
     container_name: nanoflix_backend
     build: ./backend

@@ -11,7 +11,6 @@ import { TypographyH1, TypographyP } from '@/components/ui/typography';
 
 export default function LoginPage() {
   const login = useAuthStore((state) => state.login);
-  const user = useAuthStore((state) => state.user);
   const router = useRouter();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -22,7 +21,7 @@ export default function LoginPage() {
     const success = await login(identifier, password);
 
     if (success) {
-      const { user } = useAuthStore.getState(); // <-- Pega o estado atualizado aqui
+      const { user } = useAuthStore.getState();
       console.log('user:', user);
 
       const redirectPath =

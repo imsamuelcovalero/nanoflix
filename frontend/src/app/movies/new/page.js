@@ -58,7 +58,7 @@ export default function NewMoviePage() {
     formDataToSend.append('description', formData.description);
     formDataToSend.append('genre', formData.genre);
     formDataToSend.append('releaseYear', formData.releaseYear);
-    formDataToSend.append('image', imageFile); // 'image' será o nome do campo no backend
+    formDataToSend.append('image', imageFile);
 
     try {
       await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/movies`, formDataToSend, {

@@ -22,10 +22,10 @@ export const useAuthStore = create((set) => ({
       set({ user: res.data, token: res.data.token, isAuthenticated: true });
       localStorage.setItem('nanoflix-token', res.data.token);
 
-      return true; // Indica que o login foi bem-sucedido
+      return true;
     } catch (error) {
       console.error('Erro ao fazer login:', error.response?.data || error.message);
-      return false; // Indica falha no login
+      return false;
     }
   },
 
